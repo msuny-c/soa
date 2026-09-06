@@ -1,0 +1,90 @@
+name: Deploy docs to Helios
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: helios-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Validate OpenAPI specs
+        run: |
+          python -m pip install --quiet openapi-spec-validator
+          for spec in api/*.yaml; do
+            echo "==> $spec"
+            python -m openapi_spec_validator "$spec"
+          done
+
+      - name: Build site
+        run: ./scripts/build-site.sh site
+
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: swagger-ui-site
+          path: site/
+          retention-days: 7
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Add Helios host key
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -p "$HELIOS_PORT" -H "$HELIOS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          test -s ~/.ssh/known_hosts
+
+      - name: Deploy over SSH
+        env:
+          SSHPASS: ${{ secrets.HELIOS_PASSWORD }}
+          HELIOS_USER: ${{ secrets.HELIOS_USER }}
+        run: |
+          set -euo pipefail
+          : "${SSHPASS:?secret HELIOS_PASSWORD not set}"
+          : "${HELIOS_USER:?secret HELIOS_USER not set}"
+          : "${DEPLOY_PATH:?DEPLOY_PATH is empty}"
+
+          SSH="sshpass -e ssh -p $HELIOS_PORT -o BatchMode=no $HELIOS_USER@$HELIOS_HOST"
+
+          TMP_PATH="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
+          OLD_PATH="${DEPLOY_PATH}.old-${GITHUB_RUN_ID}"
+
+          tar -czf - -C site . | $SSH "
+            set -eu
+            rm -rf ~/'$TMP_PATH'
+            mkdir -p ~/'$TMP_PATH'
+            tar -xzf - -C ~/'$TMP_PATH'
+          "
+
+          $SSH "
+            set -eu
+            mkdir -p ~/\$(dirname '$DEPLOY_PATH')
+            if [ -d ~/'$DEPLOY_PATH' ]; then mv ~/'$DEPLOY_PATH' ~/'$OLD_PATH'; fi
+            mv ~/'$TMP_PATH' ~/'$DEPLOY_PATH'
+            rm -rf ~/'$OLD_PATH'
+            chmod 711 ~
+            chmod -R a+rX ~/public_html
+          "
+
+      - name: Summary
+        run: |
+          echo "Deployed to ~/${DEPLOY_PATH} on ${HELIOS_HOST}" >> "$GITHUB_STEP_SUMMARY"
