@@ -9,6 +9,11 @@ concurrency:
   group: helios-deploy
   cancel-in-progress: true
 
+env:
+  HELIOS_HOST: ${{ vars.HELIOS_HOST }}
+  HELIOS_PORT: ${{ vars.HELIOS_PORT }}
+  DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -49,8 +54,14 @@ jobs:
 
       - name: Add Helios host key
         run: |
+          set -euo pipefail
+          : "${HELIOS_HOST:?HELIOS_HOST is empty}"
+          : "${HELIOS_PORT:?HELIOS_PORT is empty}"
+          echo "Host: $HELIOS_HOST:$HELIOS_PORT"
+
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          ssh-keyscan -p "$HELIOS_PORT" -H "$HELIOS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Без 2>/dev/null: если хост недоступен, текст ошибки нужен в логе.
+          ssh-keyscan -T 15 -p "$HELIOS_PORT" -H "$HELIOS_HOST" >> ~/.ssh/known_hosts
           test -s ~/.ssh/known_hosts
 
       - name: Deploy over SSH
