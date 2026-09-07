@@ -1,297 +1,162 @@
 openapi: 3.0.3
+
 info:
   title: HR Service
-  description: |
-    Сервис управления персоналом. Реализует бизнес-операции поверх
-    коллекции `Worker`, обращаясь к Worker Collection Service.
-    Обмен данными — XML (`application/xml`).
-  version: "1.0.0"
+  description: Сервис индексации заработной платы. Использует API Worker Collection Service.
+  version: 1.0.0
+
 servers:
-  - url: https://helios.cs.ifmo.ru/~USER/hr/v1
-    description: Helios (замените на реальный адрес перед защитой)
-  - url: http://localhost:8081/hr/v1
-    description: Локальный запуск
+  - url: https://localhost:8443/hr
 
 tags:
-  - name: hr
-    description: Операции найма и увольнения
+  - name: indexation
 
 paths:
-  /hire/{person-id}/{org-id}/{position}/{start-date}:
+
+  /index/{worker-id}/{coeff}:
     post:
-      tags: [hr]
-      summary: Принять человека на работу
-      description: |
-        Создаёт объект `Worker` для указанного человека в указанной организации.
-        Дата начала работы задаётся параметром `start-date`, статус создаваемого
-        объекта — `HIRED`.
-      operationId: hireWorker
+      tags: [indexation]
+      summary: Проиндексировать заработную плату указанному сотруднику на заданный коэффициент
       parameters:
-        - name: person-id
+        - name: worker-id
           in: path
           required: true
-          description: Идентификатор человека
           schema:
             type: integer
-            format: int64
+            format: int32
             minimum: 1
-          example: 7
-        - name: org-id
-          in: path
-          required: true
-          description: Идентификатор организации, в которую нанимают человека
-          schema:
-            type: integer
-            format: int64
-            minimum: 1
-          example: 3
-        - name: position
-          in: path
-          required: true
-          description: Должность, на которую нанимают человека
-          schema:
-            $ref: '#/components/schemas/Position'
-        - name: start-date
-          in: path
-          required: true
-          description: Дата выхода на работу
-          schema:
-            type: string
-            format: date
-          example: '2024-09-01'
+        - $ref: '#/components/parameters/Coeff'
       responses:
-        '201':
-          description: Работник нанят
-          headers:
-            Location:
-              description: URI созданного объекта в Worker Collection Service
-              schema:
-                type: string
-                format: uri
+        '200':
+          description: Зарплата проиндексирована
           content:
-            application/xml:
+            application/json:
               schema:
-                $ref: '#/components/schemas/Worker'
+                $ref: '#/components/schemas/IndexationResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
-          description: Человек или организация с указанным идентификатором не найдены
-          content:
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Человек уже работает в этой организации
-          content:
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
         '502':
           $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
-  /fire/{id}:
+  /index/all/{org-id}/{coeff}:
     post:
-      tags: [hr]
-      summary: Уволить работника
-      description: |
-        Проставляет работнику дату увольнения (`endDate`) текущей датой
-        и переводит его в статус `FIRED`. Объект из коллекции не удаляется.
-      operationId: fireWorker
+      tags: [indexation]
+      summary: Проиндексировать заработную плату всем сотрудникам указанной организации
       parameters:
-        - name: id
+        - name: org-id
           in: path
           required: true
-          description: Идентификатор работника
+          description: Идентификатор организации, значение поля person.location.name
           schema:
-            type: integer
-            format: int64
-            minimum: 1
-          example: 1
+            type: string
+            minLength: 1
+        - $ref: '#/components/parameters/Coeff'
       responses:
         '200':
-          description: Работник уволен
+          description: Зарплаты проиндексированы
           content:
-            application/xml:
+            application/json:
               schema:
-                $ref: '#/components/schemas/Worker'
+                type: object
+                required: [updated_count, results]
+                properties:
+                  updated_count:
+                    type: integer
+                    format: int32
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IndexationResult'
         '400':
           $ref: '#/components/responses/BadRequest'
         '404':
-          description: Работник с указанным идентификатором не найден
-          content:
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: Работник уже уволен
-          content:
-            application/xml:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '502':
           $ref: '#/components/responses/BadGateway'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
 
 components:
-  responses:
-    BadRequest:
-      description: Некорректный формат параметров запроса
-      content:
-        application/xml:
-          schema:
-            $ref: '#/components/schemas/Error'
-    UnprocessableEntity:
-      description: Параметры разобраны, но нарушены ограничения предметной области
-      content:
-        application/xml:
-          schema:
-            $ref: '#/components/schemas/Error'
-    BadGateway:
-      description: Worker Collection Service недоступен или вернул неожиданный ответ
-      content:
-        application/xml:
-          schema:
-            $ref: '#/components/schemas/Error'
+
+  parameters:
+
+    Coeff:
+      name: coeff
+      in: path
+      required: true
+      schema:
+        type: number
+        format: double
+        exclusiveMinimum: true
+        minimum: 0
 
   schemas:
-    Coordinates:
-      type: object
-      xml:
-        name: coordinates
-      required: [x, y]
-      properties:
-        x:
-          type: integer
-          format: int64
-          example: 42
-        y:
-          type: number
-          format: double
-          minimum: -935
-          exclusiveMinimum: true
-          example: 12.5
 
-    Location:
+    IndexationResult:
       type: object
-      xml:
-        name: location
-      required: [x, y, name]
+      required: [worker_id, old_salary, new_salary]
       properties:
-        x:
-          type: number
-          format: double
-          example: 10.1
-        y:
+        worker_id:
           type: integer
           format: int32
-          example: 20
-        name:
-          type: string
-          minLength: 1
-          maxLength: 878
-          example: Saint Petersburg
-
-    Person:
-      type: object
-      xml:
-        name: person
-      required: [passportID, location]
-      properties:
-        passportID:
-          type: string
-          minLength: 1
-          maxLength: 31
-          example: AB1234567
-        location:
-          $ref: '#/components/schemas/Location'
-
-    Position:
-      type: string
-      enum:
-        - ENGINEER
-        - HUMAN_RESOURCES
-        - HEAD_OF_DEPARTMENT
-        - LEAD_DEVELOPER
-        - MANAGER_OF_CLEANING
-      example: ENGINEER
-
-    Status:
-      type: string
-      enum:
-        - FIRED
-        - HIRED
-        - RECOMMENDED_FOR_PROMOTION
-        - REGULAR
-        - PROBATION
-      example: HIRED
-
-    Worker:
-      type: object
-      xml:
-        name: worker
-      required: [name, coordinates, salary, status, person]
-      properties:
-        id:
+        old_salary:
           type: integer
           format: int64
-          minimum: 1
-          readOnly: true
-          example: 1
-        name:
-          type: string
-          minLength: 1
-          example: Ivan Ivanov
-        coordinates:
-          $ref: '#/components/schemas/Coordinates'
-        creationDate:
-          type: string
-          format: date-time
-          readOnly: true
-          example: '2024-05-17T12:30:00+03:00'
-        salary:
+        new_salary:
           type: integer
           format: int64
-          minimum: 0
-          exclusiveMinimum: true
-          example: 120000
-        endDate:
-          type: string
-          format: date
-          nullable: true
-          example: '2025-12-31'
-        position:
-          allOf:
-            - $ref: '#/components/schemas/Position'
-          nullable: true
-        status:
-          $ref: '#/components/schemas/Status'
-        person:
-          $ref: '#/components/schemas/Person'
 
     Error:
       type: object
-      xml:
-        name: error
-      required: [code, message, timestamp]
+      required: [code, message]
       properties:
         code:
           type: integer
           format: int32
-          example: 404
         message:
           type: string
-          example: 'worker with id 42 not found'
-        details:
-          type: array
-          xml:
-            name: details
-            wrapped: true
-          items:
-            type: string
-            xml:
-              name: detail
-        timestamp:
-          type: string
-          format: date-time
-          example: '2024-05-17T12:30:00+03:00'
+
+  responses:
+
+    BadRequest:
+      description: Некорректные параметры запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Сотрудник или организация не найдены
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    UnprocessableEntity:
+      description: Недопустимое значение коэффициента или результата индексации
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    BadGateway:
+      description: Первый сервис недоступен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
