@@ -7,10 +7,13 @@ info:
 
 servers:
   - url: https://localhost:8443/api/v1
+    description: Базовый URL первого сервиса
 
 tags:
   - name: workers
+    description: Базовые CRUD-операции с коллекцией сотрудников
   - name: workers-extra
+    description: Дополнительные операции (поиск, агрегация, удаление по условию)
 
 paths:
 
@@ -18,6 +21,9 @@ paths:
     get:
       tags: [workers]
       summary: Получить массив элементов с сортировкой, фильтрацией и постраничным выводом
+      description: |
+        Возвращает список работников.
+        Поддерживает сортировку по полям, фильтрацию по условиям и пагинацию.
       parameters:
         - $ref: '#/components/parameters/SortParam'
         - $ref: '#/components/parameters/FilterParam'
@@ -31,15 +37,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkerPage'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректный параметр сортировки"
+                details:
+                  - field: "sort"
+                    issue: "Неизвестное поле 'foo'. Допустимые поля: id, name, salary, startDate, endDate, position"
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+          description: Недопустимое значение в фильтре
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Недопустимая операция в фильтре"
+                details:
+                  - field: "filter"
+                    issue: "Операция 'xyz' не поддерживается. Допустимые: eq, ne, gt, gte, lt, lte, substr, null"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при выполнении запроса"
 
     post:
       tags: [workers]
       summary: Добавить новый элемент в коллекцию
+      description: |
+        Создаёт новый объект Worker.
+        Поля id и creationDate генерируются автоматически и не должны передаваться.
       requestBody:
         required: true
         content:
@@ -59,20 +92,54 @@ paths:
               schema:
                 $ref: '#/components/schemas/Worker'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректный формат тела запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректный формат тела запроса"
+                details:
+                  - field: "salary"
+                    issue: "Ожидался числовой тип, получена строка"
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Нарушена уникальность passportID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Работник с passportID 'AB1234567' уже существует"
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+          description: Нарушены ограничения целостности
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Нарушены ограничения полей"
+                details:
+                  - field: "salary"
+                    issue: "Значение должно быть строго больше 0"
+                  - field: "name"
+                    issue: "Строка не может быть пустой"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при создании объекта"
 
   /workers/{id}:
     parameters:
       - $ref: '#/components/parameters/WorkerId'
+
     get:
       tags: [workers]
       summary: Получить элемент коллекции по ID
+      description: Возвращает подробную информацию о работнике по его идентификатору.
       responses:
         '200':
           description: Найденный объект
@@ -81,15 +148,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/Worker'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректный формат идентификатора
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректный формат идентификатора"
+                details:
+                  - field: "id"
+                    issue: "Значение должно быть целым числом >= 1, получено 'abc'"
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Объект не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Работник с id=999 не найден"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при получении объекта"
 
     put:
       tags: [workers]
       summary: Обновить элемент коллекции
+      description: |
+        Полностью заменяет данные работника.
+        Поля id и creationDate не могут быть изменены.
       requestBody:
         required: true
         content:
@@ -104,33 +195,94 @@ paths:
               schema:
                 $ref: '#/components/schemas/Worker'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректный формат тела запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректный формат тела запроса"
+                details:
+                  - field: "coordinates"
+                    issue: "Поле 'coordinates' обязательно и не может быть null"
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Объект не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Работник с id=999 не найден"
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Нарушена уникальность passportID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Работник с passportID 'XY9876543' уже существует"
         '422':
-          $ref: '#/components/responses/UnprocessableEntity'
+          description: Нарушены ограничения целостности
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Нарушены ограничения полей"
+                details:
+                  - field: "position"
+                    issue: "Недопустимое значение 'MANAGER'. Допустимые: DEVELOPER, LEAD_DEVELOPER, BAKER"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при обновлении объекта"
 
     delete:
       tags: [workers]
       summary: Удалить элемент коллекции по ID
+      description: Удаляет запись о работнике из коллекции.
       responses:
         '204':
           description: Объект удалён
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректный формат идентификатора
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректный формат идентификатора"
+                details:
+                  - field: "id"
+                    issue: "Значение должно быть целым числом >= 1, получено '-5'"
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Объект не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Работник с id=999 не найден"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при удалении объекта"
 
   /workers/salary/average:
     get:
       tags: [workers-extra]
       summary: Рассчитать среднее значение поля salary для всех объектов
+      description: |
+        Вычисляет среднюю зарплату по всем работникам.
+        Если коллекция пуста, average возвращается равным null.
       responses:
         '200':
           description: Среднее значение зарплаты
@@ -144,19 +296,29 @@ paths:
                     type: number
                     format: double
                     nullable: true
+                    description: Среднее арифметическое зарплат (null, если нет записей)
                   count:
                     type: integer
+                    description: Количество учтённых записей
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Ошибка при вычислении средней зарплаты"
 
   /workers/salary/value/{salary}:
     delete:
       tags: [workers-extra]
       summary: Удалить один объект с заданным значением salary
+      description: Удаляет один произвольный объект, значение salary которого равно переданному.
       parameters:
         - name: salary
           in: path
           required: true
+          description: Значение зарплаты для удаления
           schema:
             type: integer
             format: int64
@@ -170,20 +332,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/Worker'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректное значение salary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректное значение salary"
+                details:
+                  - field: "salary"
+                    issue: "Значение должно быть целым числом строго больше 0, получено '0'"
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Объект с указанным salary не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Объект с salary=50000 не найден в коллекции"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при удалении по salary"
 
   /workers/search/name/{substring}:
     get:
       tags: [workers-extra]
       summary: Получить объекты, поле name которых содержит заданную подстроку
+      description: Осуществляет поиск работников по вхождению подстроки в поле name.
       parameters:
         - name: substring
           in: path
           required: true
+          description: Подстрока для поиска в имени работника
           schema:
             type: string
             minLength: 1
@@ -197,9 +382,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkerPage'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Некорректные параметры поиска
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Подстрока поиска не может быть пустой"
+                details:
+                  - field: "substring"
+                    issue: "Минимальная длина строки — 1 символ"
         '500':
-          $ref: '#/components/responses/InternalServerError'
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка сервера при поиске по имени"
 
 components:
 
@@ -209,6 +409,7 @@ components:
       name: id
       in: path
       required: true
+      description: Идентификатор работника
       schema:
         type: integer
         format: int32
@@ -239,6 +440,7 @@ components:
     PageParam:
       name: page
       in: query
+      description: Номер страницы (нумерация с 0)
       schema:
         type: integer
         format: int32
@@ -248,6 +450,7 @@ components:
     SizeParam:
       name: size
       in: query
+      description: Количество элементов на странице (максимум 100)
       schema:
         type: integer
         format: int32
@@ -259,51 +462,61 @@ components:
 
     Worker:
       type: object
-      required: [name, coordinates, salary, start_date, position, person]
+      required: [id, name, coordinates, creationDate, salary, startDate, position, person]
+      description: Объект сотрудника
       properties:
         id:
           type: integer
           format: int32
           minimum: 1
           readOnly: true
+          description: Уникальный идентификатор работника, генерируется автоматически
         name:
           type: string
           minLength: 1
+          description: Имя работника
         coordinates:
           $ref: '#/components/schemas/Coordinates'
-        creation_date:
+          description: Координаты работника
+        creationDate:
           type: string
           format: date-time
           readOnly: true
+          description: Дата создания записи, генерируется автоматически
         salary:
           type: integer
           format: int64
           exclusiveMinimum: true
           minimum: 0
-        start_date:
+          description: Заработная плата (строго больше 0)
+        startDate:
           type: string
           format: date
-        end_date:
+          description: Дата начала работы
+        endDate:
           type: string
           format: date
           nullable: true
+          description: Дата окончания работы (может быть null)
         position:
           $ref: '#/components/schemas/Position'
+          description: Должность работника
         person:
           $ref: '#/components/schemas/Person'
+          description: Персональные данные работника
       example:
         id: 1
         name: Ivan Petrov
         coordinates:
           x: 12
           y: -45.7
-        creation_date: '2026-09-07T12:30:00Z'
+        creationDate: '2026-09-07T12:30:00Z'
         salary: 85000
-        start_date: '2024-01-15'
-        end_date: null
+        startDate: '2024-01-15'
+        endDate: null
         position: DEVELOPER
         person:
-          passport_id: AB1234567
+          passportID: AB1234567
           location:
             x: 10.5
             y: 20.25
@@ -312,123 +525,106 @@ components:
 
     Coordinates:
       type: object
+      description: Координаты работника
       required: [x, y]
       properties:
         x:
           type: integer
           format: int32
+          description: Координата по оси X
         y:
           type: number
           format: double
+          description: Координата по оси Y
 
     Person:
       type: object
+      description: Персональные данные работника
       properties:
-        passport_id:
+        passportID:
           type: string
           minLength: 7
           maxLength: 23
           nullable: true
+          description: Номер паспорта (уникальный, может быть null)
         location:
           allOf:
             - $ref: '#/components/schemas/Location'
           nullable: true
+          description: Местоположение (может быть null)
 
     Location:
       type: object
+      description: Географическая локация
       required: [x, y, z]
       properties:
         x:
           type: number
           format: float
+          description: Координата по оси X
         y:
           type: number
           format: double
+          description: Координата по оси Y
         z:
           type: integer
           format: int64
+          description: Координата по оси Z
         name:
           type: string
           minLength: 1
           nullable: true
+          description: Название локации (может быть null, непустое)
 
     Position:
       type: string
+      description: Должность работника
       enum: [DEVELOPER, LEAD_DEVELOPER, BAKER]
 
     WorkerPage:
       type: object
-      required: [items, page, size, total_elements, total_pages]
+      description: Страница со списком работников
+      required: [items, page, size, totalElements, totalPages]
       properties:
         items:
           type: array
+          description: Массив объектов Worker на текущей странице
           items:
             $ref: '#/components/schemas/Worker'
         page:
           type: integer
           format: int32
+          description: Номер текущей страницы
         size:
           type: integer
           format: int32
-        total_elements:
+          description: Размер страницы
+        totalElements:
           type: integer
           format: int64
-        total_pages:
+          description: Общее количество элементов во всей коллекции
+        totalPages:
           type: integer
           format: int32
+          description: Общее количество страниц
 
     Error:
       type: object
-      required: [code, message]
+      description: Общая структура ошибки
+      required: [message]
       properties:
-        code:
-          type: integer
-          format: int32
         message:
           type: string
+          description: Текстовое описание ошибки
         details:
           type: array
+          description: Детали ошибки (опционально, присутствует при ошибках валидации)
           items:
             type: object
             properties:
               field:
                 type: string
+                description: Имя поля, к которому относится проблема
               issue:
                 type: string
-
-  responses:
-
-    BadRequest:
-      description: Некорректные параметры запроса
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    NotFound:
-      description: Объект не найден
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    Conflict:
-      description: Нарушена уникальность passport_id
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    UnprocessableEntity:
-      description: Нарушены ограничения целостности
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-
-    InternalServerError:
-      description: Внутренняя ошибка сервера
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
+                description: Описание проблемы
