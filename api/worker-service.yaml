@@ -78,7 +78,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Worker'
+              $ref: '#/components/schemas/WorkerWrite'
       responses:
         '201':
           description: Объект создан
@@ -186,7 +186,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Worker'
+              $ref: '#/components/schemas/WorkerWrite'
       responses:
         '200':
           description: Объект обновлён
@@ -460,17 +460,11 @@ components:
 
   schemas:
 
-    Worker:
+    WorkerWrite:
       type: object
-      required: [id, name, coordinates, creationDate, salary, startDate, position, person]
-      description: Объект сотрудника
+      required: [name, coordinates, salary, startDate, position, person]
+      description: Данные работника для создания и обновления (без автогенерируемых полей)
       properties:
-        id:
-          type: integer
-          format: int32
-          minimum: 1
-          readOnly: true
-          description: Уникальный идентификатор работника, генерируется автоматически
         name:
           type: string
           minLength: 1
@@ -478,11 +472,6 @@ components:
         coordinates:
           $ref: '#/components/schemas/Coordinates'
           description: Координаты работника
-        creationDate:
-          type: string
-          format: date-time
-          readOnly: true
-          description: Дата создания записи, генерируется автоматически
         salary:
           type: integer
           format: int64
@@ -504,6 +493,38 @@ components:
         person:
           $ref: '#/components/schemas/Person'
           description: Персональные данные работника
+      example:
+        name: Ivan Petrov
+        coordinates:
+          x: 12
+          y: -45.7
+        salary: 85000
+        startDate: '2024-01-15'
+        endDate: null
+        position: DEVELOPER
+        person:
+          passportID: AB1234567
+          location:
+            x: 10.5
+            y: 20.25
+            z: 300
+            name: Saint Petersburg
+
+    Worker:
+      allOf:
+        - type: object
+          required: [id, creationDate]
+          properties:
+            id:
+              type: integer
+              format: int32
+              minimum: 1
+              description: Уникальный идентификатор работника, генерируется автоматически
+            creationDate:
+              type: string
+              format: date-time
+              description: Дата создания записи, генерируется автоматически
+        - $ref: '#/components/schemas/WorkerWrite'
       example:
         id: 1
         name: Ivan Petrov
