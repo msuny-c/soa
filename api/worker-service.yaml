@@ -72,7 +72,6 @@ paths:
       summary: Добавить новый элемент в коллекцию
       description: |
         Создаёт новый объект Worker.
-        Поля id и creationDate генерируются автоматически и не должны передаваться.
       requestBody:
         required: true
         content:
@@ -463,7 +462,7 @@ components:
     WorkerWrite:
       type: object
       required: [name, coordinates, salary, startDate, position, person]
-      description: Данные работника для создания и обновления (без автогенерируемых полей)
+      description: Данные работника для создания и обновления
       properties:
         name:
           type: string
