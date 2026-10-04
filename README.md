@@ -1,101 +1,104 @@
-# Сервис-ориентированная архитектура — лабораторные работы №1 и №2
+# СОА, лабораторные работы №1 и №2
 
-**Вариант:** 67208
+Вариант 67208.
 
-- **ЛР1** — OpenAPI-спецификации двух REST-сервисов (Worker Collection Service и HR Service) с интерактивной документацией Swagger UI.
-- **ЛР2** — реализация обоих сервисов по спецификации и клиентское приложение.
+- ЛР1: OpenAPI-спецификации Worker Collection Service и HR Service, документация в Swagger UI.
+- ЛР2: реализация обоих сервисов и клиент.
 
 ## Структура
-```
-openapi/               # OpenAPI-спецификации (.yaml) — источник контракта для сервисов и клиента
-swagger-ui/            # ЛР1: сборка Swagger UI (build-site.sh + инициализатор)
-  site/                #   (генерируется) готовый сайт Swagger UI
 
-pom.xml                # Maven multi-module (Java 17)
+```
+openapi/               спецификации сервисов
+swagger-ui/            сборка Swagger UI (ЛР1), результат в swagger-ui/site/
 services/
-  worker-service/      # Worker Collection Service: Spring MVC 6, Spring Data JPA, Bean Validation, Lombok (/api/v1)
-  hr-service/          # HR Service: JAX-RS, MicroProfile Rest Client, Bean Validation (/hr)
-  site/                # Клиент: React + Ant Design + TanStack Query, клиент API генерируется из openapi/*.yaml (/)
-    src/               #   исходники React (Vite)
-    webapp/            #   WEB-INF для site.war (вместо src/main/webapp, чтобы не смешивать с исходниками Vite)
-.github/
-  workflows/           # CI: проверка спецификаций и публикация Swagger UI на helios
-  scripts/             # Скрипты настройки доменов Payara и деплоя сервисов на helios
-
-docs/tasks/            # Тексты заданий
-docs/report/           # Отчёты (Typst): common/ — титульный лист, lab-N/ — отчёт по работе
-Makefile               # Сборка отчётов: make docs, make watch LAB=lab-1
+  worker-service/      Spring MVC, Spring Data JPA, PostgreSQL; /api/v1
+  hr-service/          JAX-RS, MicroProfile Rest Client; /hr
+  site/                клиент: React, Ant Design, TanStack Query; /
+.github/workflows/     CI: проверка спецификаций и публикация Swagger UI
+.github/scripts/       настройка доменов Payara и деплой на helios
+docs/                  задания и отчёты (Typst), сборка отчётов — make docs
+pom.xml                родительский Maven-проект
 ```
 
-Пакеты обоих сервисов (`ru.itmo.soa.workers.*`, `ru.itmo.soa.hr.*`) устроены одинаково:
-`config` — конфигурация приложения, `controller` — REST-ресурсы и обработка ошибок, `dto` — объекты API,
-`error` — исключения, `service` — бизнес-логика. Дополнительно: `domain`/`repository`/`query` в worker-service,
-`client` (MicroProfile Rest Client к Worker Collection Service) в hr-service.
+Пакеты сервисов: `config`, `controller` (REST-ресурсы и обработчики ошибок), `dto`, `error`, `service`.
+В worker-service ещё `domain`, `repository`, `query` (разбор сортировки и фильтров), в hr-service — `client` (клиент Worker Collection Service).
 
-## ЛР1: Swagger UI
+В клиенте типы и HTTP-клиент генерируются из `openapi/*.yaml` при сборке (`openapi-typescript`, `openapi-fetch`).
+Разделы: `#/workers`, `#/reports`, `#/indexation`.
 
-Требования: Bash, Node.js ≥ 18, npm.
+## Swagger UI
+
+Нужны Bash и Node.js 18+.
 
 ```bash
 ./swagger-ui/build-site.sh
-cd swagger-ui/site && npx serve   # http://localhost:3000
+cd swagger-ui/site && npx serve
 ```
 
-## ЛР2: сервисы и клиент
+## Сборка
 
-### Архитектура
-
-| Компонент | Технология | Домен Payara | URL (порты по умолчанию) |
-|---|---|---|---|
-| Worker Collection Service | Spring MVC REST, PostgreSQL (`jdbc/workersDS`) | `soa-workers` | `https://localhost:24081/api/v1/workers` |
-| Клиент | React SPA | `soa-workers` | `https://localhost:24081/` |
-| HR Service | JAX-RS, вызывает Worker Collection Service по HTTPS | `soa-hr` | `https://localhost:24181/hr/index/...` |
-
-- В обоих доменах `http-listener-1` (HTTP) отключён, работает только `http-listener-2` (HTTPS) с самоподписанным сертификатом (SAN: `localhost`, `helios.cs.ifmo.ru`, `se.ifmo.ru`, `127.0.0.1`). Админ-порт переведён на HTTPS (`enable-secure-admin`).
-- HR Service вызывает Worker Collection Service через MicroProfile Rest Client; адрес задаётся ключом `worker-service/mp-rest/url` (config source домена Payara), а сертификат первого сервиса импортируется в стандартный truststore (`cacerts`) домена HR.
-- Типы и HTTP-клиент фронтенда генерируются из OpenAPI-спецификаций (`openapi-typescript` + `openapi-fetch`) при каждой сборке — ручных DTO на клиенте нет.
-- Таблица `soa_workers` создаётся при старте worker-service из `services/worker-service/src/main/resources/schema.sql`.
-
-### Сборка
-
-Требования: JDK 17, Maven 3.9 (Node.js для клиента скачивается плагином `frontend-maven-plugin`).
+Нужны JDK 17–21 и Maven 3.9. Node.js для клиента скачивает `frontend-maven-plugin`.
 
 ```bash
 VITE_WORKER_API=https://localhost:24081/api/v1 \
 VITE_HR_API=https://localhost:24181/hr \
-mvn package
+mvn clean package -DskipTests
 ```
 
-Результат: `services/worker-service/target/worker-service.war`, `services/hr-service/target/hr-service.war`, `services/site/target/site.war`.
-Адреса сервисов для клиента обязательны на этапе сборки — без них сборка клиента завершится ошибкой.
+Адреса сервисов зашиваются в клиент при сборке, без них сборка клиента падает.
+Получаются `worker-service.war`, `hr-service.war` и `site.war` в `services/*/target/`.
 
 Тесты: `mvn -pl services/worker-service,services/hr-service test`.
 
-### Развёртывание на helios
+## Развёртывание
 
-1. Однократно на helios: скачать и распаковать Payara Server 6 (Full или Web) в `~/payara6`, положить JDBC-драйвер PostgreSQL в `~/lib/postgresql-42.7.4.jar`.
-2. Локально: `cp .github/scripts/env.example .github/scripts/.env` и заполнить — логин helios, пароль БД (`~/.pgpass` на helios), свободные `WORKER_PORTBASE` / `HR_PORTBASE` (HTTPS-порт = portbase + 81, админ-порт = portbase + 48), пароль admin.
-3. Первый деплой с настройкой доменов:
-   ```bash
-   ./.github/scripts/deploy.sh --setup
-   ```
-   Скрипт соберёт проект, скопирует WAR-файлы и скрипты на helios, создаст два домена, сгенерирует сертификаты, отключит HTTP, создаст JDBC-пул и задеплоит приложения. При первом обращении к админ-порту по HTTPS `asadmin` попросит подтвердить сертификат.
-4. Последующие деплои: `./.github/scripts/deploy.sh`.
+| Приложение | Домен Payara | Адрес |
+|---|---|---|
+| worker-service | `soa-workers` | `https://localhost:24081/api/v1/workers` |
+| site | `soa-workers` | `https://localhost:24081/` |
+| hr-service | `soa-hr` | `https://localhost:24181/hr` |
 
-### Доступ из браузера
+`setup-domains.sh` создаёт оба домена и делает следующее:
 
-Порты helios недоступны снаружи, поэтому нужен SSH-туннель:
+- отключает HTTP-листенер, оставляет HTTPS с самоподписанным сертификатом, переводит админ-порт на HTTPS;
+- создаёт JDBC-пул `jdbc/workersDS`; таблица создаётся при старте worker-service из `schema.sql`;
+- добавляет сертификат `soa-workers` в truststore домена `soa-hr` и задаёт адрес Worker Collection Service ключом `worker-service/mp-rest/url`.
+
+HTTPS-порт домена равен `portbase + 81`, админ-порт — `portbase + 48`.
+
+### helios
+
+1. На helios распаковать Payara 6 в `~/payara6` и положить драйвер PostgreSQL в `~/lib/postgresql-42.7.4.jar`.
+2. Скопировать `.github/scripts/env.example` в `.github/scripts/.env` и заполнить: логин helios, пароль БД (из `~/.pgpass` на helios), `WORKER_PORTBASE`, `HR_PORTBASE`, пароль admin.
+3. Первый деплой: `./.github/scripts/deploy.sh --setup`. Скрипт собирает проект, копирует WAR и скрипты на helios, настраивает домены и деплоит приложения.
+4. Дальше: `./.github/scripts/deploy.sh`.
+
+Порты helios снаружи закрыты, поэтому нужен туннель:
 
 ```bash
 ssh -p 2222 -L 24081:localhost:24081 -L 24181:localhost:24181 s123456@se.ifmo.ru
 ```
 
-Затем открыть `https://localhost:24181/hr/index/1/1` и `https://localhost:24081/` и **в обоих** принять самоподписанный сертификат (для HR ответ будет ошибкой 405 — это нормально, важно только принять сертификат). После этого клиент на `https://localhost:24081/` сможет обращаться к обоим сервисам.
+В браузере нужно один раз принять сертификаты обоих доменов. Для этого открыть `https://localhost:24181/hr/index/1/1` (ответ 405 — так и должно быть) и `https://localhost:24081/`.
 
-### Проверка
+### Локально
+
+Нужны Payara 6 на JDK 21, PostgreSQL и тот же env-файл с локальными значениями (`PAYARA_HOME`, `DB_HOST=localhost`, `DB_NAME` и т. д.).
+
+```bash
+ENV_FILE=path/to/local.env bash .github/scripts/setup-domains.sh
+
+asadmin --port 24048 deploy --force=true --name worker-service --contextroot /api services/worker-service/target/worker-service.war
+asadmin --port 24048 deploy --force=true --name site --contextroot / services/site/target/site.war
+asadmin --port 24148 deploy --force=true --name hr-service --contextroot /hr services/hr-service/target/hr-service.war
+```
+
+`asadmin` берётся из `$PAYARA_HOME/bin`. После `setup-domains.sh` ему нужны `--user admin --passwordfile .github/scripts/.asadmin-password`.
+
+## Проверка
 
 ```bash
 curl -k 'https://localhost:24081/api/v1/workers?sort=-salary,name&filter=salary%5Bgte%5D%3D1000&page=0&size=5'
 curl -k -X POST https://localhost:24181/hr/index/1/1.1
-curl http://localhost:24080/api/v1/workers   # HTTP отключён — соединение отклоняется
+curl http://localhost:24080/api/v1/workers   # HTTP выключен, соединение отклоняется
 ```
