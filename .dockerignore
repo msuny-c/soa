@@ -1,0 +1,9 @@
+**/node_modules
+**/target
+**/dist
+services/site/src/generated
+.git
+.github
+docs
+openapi/swagger-ui
+**/.DS_Store

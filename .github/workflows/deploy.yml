@@ -40,13 +40,13 @@ jobs:
           done
 
       - name: Build site
-        run: ./swagger-ui/build-site.sh
+        run: ./openapi/swagger-ui/build.sh
 
       - name: Upload site artifact
         uses: actions/upload-artifact@v7
         with:
           name: swagger-ui-site
-          path: swagger-ui/site/
+          path: openapi/swagger-ui/dist/
           retention-days: 7
 
       - name: Install sshpass
@@ -79,7 +79,7 @@ jobs:
           TMP_PATH="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
           OLD_PATH="${DEPLOY_PATH}.old-${GITHUB_RUN_ID}"
 
-          tar -czf - -C swagger-ui/site . | $SSH "
+          tar -czf - -C openapi/swagger-ui/dist . | $SSH "
             set -eu
             rm -rf ~/'$TMP_PATH'
             mkdir -p ~/'$TMP_PATH'

@@ -1,0 +1,1 @@
+set-config-property --source=domain --propertyName=worker-service/mp-rest/url --propertyValue=https://worker:8181/api/v1

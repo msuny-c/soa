@@ -1,4 +1,4 @@
-swagger-ui/site/
+openapi/swagger-ui/dist/
 node_modules/
 *.tgz
 .DS_Store

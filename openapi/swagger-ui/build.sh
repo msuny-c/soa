@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Собирает статический сайт документации: Swagger UI + спецификации.
-# Использование: ./swagger-ui/build-site.sh [output-dir]
+# Использование: ./openapi/swagger-ui/build.sh [output-dir]
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="${1:-$ROOT/swagger-ui/site}"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SPECS="$(cd "$DIR/.." && pwd)"
+OUT="${1:-$DIR/dist}"
 # Версия пакета swagger-ui-dist (диапазон semver допустим).
 SWAGGER_UI_VERSION="${SWAGGER_UI_VERSION:-5}"
 
@@ -31,9 +32,9 @@ for f in index.html oauth2-redirect.html swagger-ui.css index.css \
 done
 
 # Свой инициализатор (переключатель между двумя спецификациями).
-cp "$ROOT/swagger-ui/swagger-initializer.js" "$OUT/swagger-initializer.js"
+cp "$DIR/swagger-initializer.js" "$OUT/swagger-initializer.js"
 
 # Спецификации кладём рядом с index.html — на них ссылается инициализатор.
-cp "$ROOT/openapi/worker-service.yaml" "$ROOT/openapi/hr-service.yaml" "$OUT/"
+cp "$SPECS/worker-service.yaml" "$SPECS/hr-service.yaml" "$OUT/"
 
 echo "==> Готово: $(find "$OUT" -type f | wc -l | tr -d ' ') файлов в $OUT"
