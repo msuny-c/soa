@@ -1,27 +1,24 @@
 TYPST ?= typst
 
-DOCS_DIR := docs
-REPORT_SRC := $(DOCS_DIR)/report.typ
-REPORT_PDF := $(DOCS_DIR)/report.pdf
+REPORT_DIR := docs/report
+LABS := lab-1
+LAB ?= lab-1
 
-REPORT_DEPS := \
-	$(REPORT_SRC) \
-	$(DOCS_DIR)/title.typ \
-	$(DOCS_DIR)/logo.png \
-	$(DOCS_DIR)/swagger-workers.png \
-	$(DOCS_DIR)/swagger-hr.png
+COMMON_DEPS := $(wildcard $(REPORT_DIR)/common/*)
+REPORT_PDFS := $(foreach lab,$(LABS),$(REPORT_DIR)/$(lab)/report.pdf)
 
 .PHONY: all docs watch clean
 
 all: docs
 
-docs: $(REPORT_PDF)
+docs: $(REPORT_PDFS)
 
-$(REPORT_PDF): $(REPORT_DEPS)
-	$(TYPST) compile --root $(DOCS_DIR) $(REPORT_SRC) $(REPORT_PDF)
+.SECONDEXPANSION:
+$(REPORT_DIR)/%/report.pdf: $$(wildcard $(REPORT_DIR)/$$*/*.typ $(REPORT_DIR)/$$*/*.png) $(COMMON_DEPS)
+	$(TYPST) compile --root $(REPORT_DIR) $(REPORT_DIR)/$*/report.typ $@
 
 watch:
-	$(TYPST) watch --root $(DOCS_DIR) $(REPORT_SRC) $(REPORT_PDF)
+	$(TYPST) watch --root $(REPORT_DIR) $(REPORT_DIR)/$(LAB)/report.typ $(REPORT_DIR)/$(LAB)/report.pdf
 
 clean:
-	rm -f $(REPORT_PDF)
+	rm -f $(REPORT_PDFS)

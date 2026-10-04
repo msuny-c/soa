@@ -1,0 +1,31 @@
+{
+  "name": "soa-site",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "gen": "openapi-typescript ../../openapi/worker-service.yaml -o src/generated/worker-service.ts && openapi-typescript ../../openapi/hr-service.yaml -o src/generated/hr-service.ts",
+    "predev": "npm run gen",
+    "dev": "vite",
+    "prebuild": "npm run gen",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.5.1",
+    "@tanstack/react-query": "^5.59.16",
+    "antd": "^5.21.6",
+    "dayjs": "^1.11.13",
+    "openapi-fetch": "^0.12.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "openapi-typescript": "^7.4.2",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.10"
+  }
+}

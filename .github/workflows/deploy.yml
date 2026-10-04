@@ -34,19 +34,19 @@ jobs:
       - name: Validate OpenAPI specs
         run: |
           python -m pip install --quiet openapi-spec-validator
-          for spec in api/*.yaml; do
+          for spec in openapi/*.yaml; do
             echo "==> $spec"
             python -m openapi_spec_validator "$spec"
           done
 
       - name: Build site
-        run: ./scripts/build-site.sh site
+        run: ./swagger-ui/build-site.sh
 
       - name: Upload site artifact
         uses: actions/upload-artifact@v7
         with:
           name: swagger-ui-site
-          path: site/
+          path: swagger-ui/site/
           retention-days: 7
 
       - name: Install sshpass
@@ -79,7 +79,7 @@ jobs:
           TMP_PATH="${DEPLOY_PATH}.tmp-${GITHUB_RUN_ID}"
           OLD_PATH="${DEPLOY_PATH}.old-${GITHUB_RUN_ID}"
 
-          tar -czf - -C site . | $SSH "
+          tar -czf - -C swagger-ui/site . | $SSH "
             set -eu
             rm -rf ~/'$TMP_PATH'
             mkdir -p ~/'$TMP_PATH'
