@@ -39,7 +39,8 @@ db_password() {
     return 1
   fi
   local host port db user password
-  while IFS=: read -r host port db user password; do
+  while IFS=: read -r host port db user password || [ -n "$host" ]; do
+    password="${password%$'\r'}"
     if [[ ("$host" == "$DB_HOST" || "$host" == "*") && ("$port" == "$DB_PORT" || "$port" == "*") &&
           ("$db" == "$DB_NAME" || "$db" == "*") && ("$user" == "$DB_USER" || "$user" == "*") ]]; then
       printf '%s' "$password"
