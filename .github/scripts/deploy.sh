@@ -10,6 +10,22 @@ if [ -n "${SSH_WRAPPER:-}" ]; then
   SCP=("${WRAPPER[@]}" "${SCP[@]}")
 fi
 REMOTE_DIR="~/$HELIOS_DIR"
+PAYARA_VERSION=6.2025.11
+PG_JDBC_VERSION=42.7.4
+MAVEN_CENTRAL=https://repo1.maven.org/maven2
+
+upload_distributions() {
+  local dir
+  dir="$(mktemp -d)"
+  echo "==> Скачиваю Payara $PAYARA_VERSION и драйвер PostgreSQL $PG_JDBC_VERSION"
+  curl -fsSL -o "$dir/payara.zip" \
+    "$MAVEN_CENTRAL/fish/payara/distributions/payara/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip"
+  curl -fsSL -o "$dir/postgresql.jar" \
+    "$MAVEN_CENTRAL/org/postgresql/postgresql/$PG_JDBC_VERSION/postgresql-$PG_JDBC_VERSION.jar"
+  "${SSH[@]}" "$HELIOS_SSH" "mkdir -p $REMOTE_DIR/dist"
+  "${SCP[@]}" "$dir/payara.zip" "$dir/postgresql.jar" "$HELIOS_SSH:$REMOTE_DIR/dist/"
+  rm -rf "$dir"
+}
 
 echo "==> Сборка (VITE_WORKER_API=$WORKER_API_URL, VITE_HR_API=$HR_API_URL)"
 (cd "$ROOT" && VITE_WORKER_API="$WORKER_API_URL" VITE_HR_API="$HR_API_URL" mvn -B clean package)
@@ -28,6 +44,7 @@ echo "==> Копирую артефакты на $HELIOS_SSH:$REMOTE_DIR"
 "${SSH[@]}" "$HELIOS_SSH" "umask 077 && rm -f $REMOTE_DIR/scripts/.env && cat > $REMOTE_DIR/scripts/.env" < "$ENV_FILE"
 
 if [ "${1:-}" = "--setup" ]; then
+  upload_distributions
   "${SSH[@]}" "$HELIOS_SSH" "bash $REMOTE_DIR/scripts/setup-domains.sh"
 fi
 "${SSH[@]}" "$HELIOS_SSH" "bash $REMOTE_DIR/scripts/remote-deploy.sh"

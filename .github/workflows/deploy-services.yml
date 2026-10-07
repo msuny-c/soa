@@ -50,10 +50,9 @@ jobs:
           HR_PORTBASE: ${{ vars.HR_PORTBASE }}
           PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
           ADMIN_PASSWORD: ${{ secrets.PAYARA_ADMIN_PASSWORD }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in HELIOS_USER WORKER_PORTBASE HR_PORTBASE PUBLIC_HOST ADMIN_PASSWORD DB_PASSWORD; do
+          for name in HELIOS_USER WORKER_PORTBASE HR_PORTBASE PUBLIC_HOST ADMIN_PASSWORD; do
             : "${!name:?$name is empty}"
           done
           umask 077
@@ -73,8 +72,6 @@ jobs:
             echo 'DB_PORT=5432'
             echo 'DB_NAME=studs'
             printf 'DB_USER=%q\n' "$HELIOS_USER"
-            printf 'DB_PASSWORD=%q\n' "$DB_PASSWORD"
-            echo 'PG_JDBC_JAR=$HOME/lib/postgresql-42.7.4.jar'
             printf 'PUBLIC_HOST=%q\n' "$PUBLIC_HOST"
           } > .github/scripts/.env
 

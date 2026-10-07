@@ -42,12 +42,11 @@ mvn clean package -DskipTests
 
 ## helios
 
-1. На helios: Payara 6 в `~/payara6`, драйвер PostgreSQL в `~/lib/postgresql-42.7.4.jar`.
-2. `cp .github/scripts/env.example .github/scripts/.env` и заполнить.
-3. `./.github/scripts/deploy.sh --setup` — первый раз, с созданием доменов; дальше без `--setup`.
-4. Туннель: `ssh -p 2222 -L 24081:localhost:24081 -L 24181:localhost:24181 s123456@se.ifmo.ru`.
+1. `cp .github/scripts/env.example .github/scripts/.env` и заполнить.
+2. `./.github/scripts/deploy.sh --setup` — первый раз: загружает на helios Payara и драйвер PostgreSQL, создаёт домены; дальше без `--setup`.
+3. Туннель: `ssh -p 2222 -L 24081:localhost:24081 -L 24181:localhost:24181 s123456@se.ifmo.ru`.
 
-Тот же `setup-domains.sh` поднимает домены и на локальном Payara: `ENV_FILE=local.env bash .github/scripts/setup-domains.sh`.
+На helios должна быть Java 17 или 21. Пароль БД берётся из `~/.pgpass` на helios и хранится в домене Payara как алиас.
 
 ### GitHub Actions
 
@@ -58,7 +57,7 @@ mvn clean package -DskipTests
 Для `deploy-services` в настройках репозитория нужны:
 
 - variables: `HELIOS_HOST`, `HELIOS_PORT`, `WORKER_PORTBASE`, `HR_PORTBASE`, `PUBLIC_HOST` (`localhost` для доступа через туннель или `helios.cs.ifmo.ru`);
-- secrets: `HELIOS_USER`, `HELIOS_PASSWORD`, `DB_PASSWORD`, `PAYARA_ADMIN_PASSWORD`.
+- secrets: `HELIOS_USER`, `HELIOS_PASSWORD`, `PAYARA_ADMIN_PASSWORD`.
 
 ## Swagger UI
 
