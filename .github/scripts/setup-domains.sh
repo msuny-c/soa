@@ -116,6 +116,7 @@ configure_common() {
   admin "$port" delete-jvm-options -- -Xmx512m || true
   admin "$port" create-jvm-options -- "-Xmx$JVM_HEAP" || true
   admin "$port" create-jvm-options -- "-XX\\:ActiveProcessorCount=2" || true
+  admin "$port" create-jvm-options -- "-XX\\:+UseSerialGC" || true
   admin "$port" set-hazelcast-configuration --enabled=false --dynamic=true
   admin "$port" enable-secure-admin
 }
@@ -159,15 +160,17 @@ replace_certificate "$HR_DOMAIN"
 trust_worker_certificate
 
 "$ASADMIN" start-domain "$WORKER_DOMAIN"
-"$ASADMIN" start-domain "$HR_DOMAIN"
-
 configure_common "$WORKER_ADMIN_PORT"
-configure_common "$HR_ADMIN_PORT"
 configure_worker_domain
-configure_hr_domain
+"$ASADMIN" stop-domain "$WORKER_DOMAIN"
 
-"$ASADMIN" restart-domain "$WORKER_DOMAIN"
-"$ASADMIN" restart-domain "$HR_DOMAIN"
+"$ASADMIN" start-domain "$HR_DOMAIN"
+configure_common "$HR_ADMIN_PORT"
+configure_hr_domain
+"$ASADMIN" stop-domain "$HR_DOMAIN"
+
+"$ASADMIN" start-domain "$WORKER_DOMAIN"
+"$ASADMIN" start-domain "$HR_DOMAIN"
 
 echo "==> Готово"
 echo "    Worker Collection Service: https://$PUBLIC_HOST:$WORKER_HTTPS_PORT/api/v1/workers"

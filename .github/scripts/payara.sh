@@ -3,7 +3,7 @@
 
 ASADMIN="$PAYARA_HOME/bin/asadmin"
 export AS_ADMIN_INTERACTIVE=false
-export JAVA_TOOL_OPTIONS="-Xmx256m -XX:ActiveProcessorCount=2"
+export JAVA_TOOL_OPTIONS="-Xmx256m -XX:ActiveProcessorCount=2 -XX:+UseSerialGC"
 PASSWORD_FILE="$DEPLOY_DIR/.asadmin-password"
 PAYARA_MASTER_PASSWORD=changeit
 
