@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: soa
+      POSTGRES_USER: soa
+      POSTGRES_PASSWORD: soa
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soa -d soa"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: worker
+      args:
+        SERVER: worker
+    ports:
+      - "24081:8181"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  hr:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: hr
+      args:
+        SERVER: hr
+    ports:
+      - "24181:8181"
+    depends_on:
+      - worker
+
+volumes:
+  db-data:

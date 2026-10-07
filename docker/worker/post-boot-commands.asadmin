@@ -1,0 +1,2 @@
+create-jdbc-connection-pool --datasourceclassname=org.postgresql.ds.PGSimpleDataSource --restype=javax.sql.DataSource --property=serverName=db:portNumber=5432:databaseName=soa:user=soa:password=soa workersPool
+create-jdbc-resource --connectionpoolid=workersPool jdbc/workersDS

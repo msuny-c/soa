@@ -1,0 +1,227 @@
+openapi: 3.0.3
+
+info:
+  title: HR Service
+  description: Сервис индексации заработной платы. Использует API Worker Collection Service.
+  version: 1.0.0
+
+servers:
+  - url: https://localhost:24181/hr
+    description: Базовый URL второго сервиса
+
+tags:
+  - name: indexation
+    description: Операции по индексации заработной платы
+
+paths:
+
+  /index/{worker-id}/{coeff}:
+    post:
+      tags: [indexation]
+      summary: Проиндексировать заработную плату указанному сотруднику на заданный коэффициент
+      description: |
+        Увеличивает зарплату конкретного работника на указанный коэффициент.
+        Новая зарплата вычисляется как oldSalary * coeff.
+      parameters:
+        - name: worker-id
+          in: path
+          required: true
+          description: Идентификатор работника в Worker Collection Service
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+        - $ref: '#/components/parameters/Coeff'
+      responses:
+        '200':
+          description: Зарплата проиндексирована
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexationResult'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректное значение коэффициента"
+                details:
+                  - field: "coeff"
+                    issue: "Коэффициент должен быть числом строго больше 0, получено '-1.5'"
+        '404':
+          description: Сотрудник не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Работник с id=42 не найден в Worker Collection Service"
+        '422':
+          description: Недопустимый результат индексации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Результат индексации превышает максимально допустимое значение"
+                details:
+                  - field: "newSalary"
+                    issue: "Значение 9223372036854775807 превышает лимит int64"
+        '502':
+          description: Worker Collection Service недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Не удалось подключиться к Worker Collection Service (https://localhost:8443/api/v1)"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка HR Service при индексации зарплаты"
+
+  /index/all/{org-id}/{coeff}:
+    post:
+      tags: [indexation]
+      summary: Проиндексировать заработную плату всем сотрудникам указанной организации
+      description: |
+        Увеличивает зарплату всех работников, у которых person.location.name равно org-id.
+      parameters:
+        - name: org-id
+          in: path
+          required: true
+          description: Идентификатор организации (значение поля person.location.name)
+          schema:
+            type: string
+            minLength: 1
+        - $ref: '#/components/parameters/Coeff'
+      responses:
+        '200':
+          description: Зарплаты проиндексированы
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updatedCount, results]
+                properties:
+                  updatedCount:
+                    type: integer
+                    format: int32
+                    description: Количество успешно проиндексированных работников
+                  results:
+                    type: array
+                    description: Результаты индексации по каждому работнику
+                    items:
+                      $ref: '#/components/schemas/IndexationResult'
+        '400':
+          description: Некорректные параметры запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Некорректное значение коэффициента"
+                details:
+                  - field: "coeff"
+                    issue: "Коэффициент должен быть числом строго больше 0, получено '0'"
+        '404':
+          description: Организация не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Организация 'Unknown Corp' не найдена. Нет работников с person.location.name='Unknown Corp'"
+        '422':
+          description: Недопустимый результат индексации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Результат индексации для одного из сотрудников превышает допустимое значение"
+                details:
+                  - field: "newSalary"
+                    issue: "Для работника id=7 результат 999999999999999 превышает лимит"
+        '502':
+          description: Worker Collection Service недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Не удалось подключиться к Worker Collection Service (https://localhost:8443/api/v1)"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "Внутренняя ошибка HR Service при массовой индексации"
+
+components:
+
+  parameters:
+
+    Coeff:
+      name: coeff
+      in: path
+      required: true
+      description: Коэффициент индексации (строго больше 0). Например, 1.1 — повышение на 10%
+      schema:
+        type: number
+        format: double
+        exclusiveMinimum: true
+        minimum: 0
+
+  schemas:
+
+    IndexationResult:
+      type: object
+      description: Результат индексации зарплаты одного работника
+      required: [workerID, oldSalary, newSalary]
+      properties:
+        workerID:
+          type: integer
+          format: int32
+          description: Идентификатор работника
+        oldSalary:
+          type: integer
+          format: int64
+          description: Зарплата до индексации
+        newSalary:
+          type: integer
+          format: int64
+          description: Зарплата после индексации
+      example:
+        workerID: 1
+        oldSalary: 85000
+        newSalary: 93500
+
+    Error:
+      type: object
+      description: Общая структура ошибки
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Текстовое описание ошибки
+        details:
+          type: array
+          description: Детали ошибки (опционально, присутствует при ошибках валидации)
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Имя поля, к которому относится проблема
+              issue:
+                type: string
+                description: Описание проблемы

@@ -1,0 +1,90 @@
+name: Deploy services to Helios
+
+on:
+  workflow_dispatch:
+    inputs:
+      setup:
+        description: Создать и настроить домены Payara (первый деплой)
+        type: boolean
+        default: false
+
+concurrency:
+  group: helios-services
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+
+      - name: Add Helios host key
+        env:
+          HELIOS_HOST: ${{ vars.HELIOS_HOST }}
+          HELIOS_PORT: ${{ vars.HELIOS_PORT }}
+        run: |
+          set -euo pipefail
+          : "${HELIOS_HOST:?HELIOS_HOST is empty}"
+          : "${HELIOS_PORT:?HELIOS_PORT is empty}"
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -T 15 -p "$HELIOS_PORT" -H "$HELIOS_HOST" >> ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+
+      - name: Write deploy config
+        env:
+          HELIOS_HOST: ${{ vars.HELIOS_HOST }}
+          HELIOS_PORT: ${{ vars.HELIOS_PORT }}
+          HELIOS_USER: ${{ secrets.HELIOS_USER }}
+          WORKER_PORTBASE: ${{ vars.WORKER_PORTBASE }}
+          HR_PORTBASE: ${{ vars.HR_PORTBASE }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+          ADMIN_PASSWORD: ${{ secrets.PAYARA_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in HELIOS_USER WORKER_PORTBASE HR_PORTBASE PUBLIC_HOST ADMIN_PASSWORD; do
+            : "${!name:?$name is empty}"
+          done
+          umask 077
+          {
+            printf 'HELIOS_SSH=%q\n' "$HELIOS_USER@$HELIOS_HOST"
+            printf 'HELIOS_SSH_PORT=%q\n' "$HELIOS_PORT"
+            echo 'HELIOS_DIR=soa'
+            echo 'PAYARA_HOME=$HOME/payara6'
+            echo 'WORKER_DOMAIN=soa-workers'
+            echo 'HR_DOMAIN=soa-hr'
+            printf 'WORKER_PORTBASE=%q\n' "$WORKER_PORTBASE"
+            printf 'HR_PORTBASE=%q\n' "$HR_PORTBASE"
+            echo 'JVM_HEAP=256m'
+            printf 'ADMIN_PASSWORD=%q\n' "$ADMIN_PASSWORD"
+            echo 'CERT_HOSTNAMES=localhost,helios.cs.ifmo.ru,se.ifmo.ru'
+            echo 'DB_HOST=pg'
+            echo 'DB_PORT=5432'
+            echo 'DB_NAME=studs'
+            printf 'DB_USER=%q\n' "$HELIOS_USER"
+            printf 'PUBLIC_HOST=%q\n' "$PUBLIC_HOST"
+          } > .github/scripts/.env
+
+      - name: Deploy
+        env:
+          SSHPASS: ${{ secrets.HELIOS_PASSWORD }}
+          SSH_WRAPPER: sshpass -e
+          SETUP: ${{ inputs.setup }}
+        run: |
+          set -euo pipefail
+          : "${SSHPASS:?secret HELIOS_PASSWORD not set}"
+          if [ "$SETUP" = "true" ]; then
+            ./.github/scripts/deploy.sh --setup
+          else
+            ./.github/scripts/deploy.sh
+          fi

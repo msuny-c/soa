@@ -1,0 +1,26 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build and test
+        env:
+          VITE_WORKER_API: https://localhost:24081/api/v1
+          VITE_HR_API: https://localhost:24181/hr
+        run: mvn -B clean verify
