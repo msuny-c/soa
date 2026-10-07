@@ -2,6 +2,7 @@
 . "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 ASADMIN="$PAYARA_HOME/bin/asadmin"
+export AS_ADMIN_INTERACTIVE=false
 PASSWORD_FILE="$DEPLOY_DIR/.asadmin-password"
 PAYARA_MASTER_PASSWORD=changeit
 

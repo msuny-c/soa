@@ -121,9 +121,9 @@ class WorkerControllerTest {
             "\"x\": 12|\"x\": 12.5|coordinates.x",
             "2024-01-15|15.01.2024|startDate",
             "\"name\": \"Ivan Petrov\",|\"name\": \"Ivan Petrov\", \"extra\": 1,|extra",
-            "\"salary\": 85000,|'',|salary",
+            "\"salary\": 85000,|''|salary",
             "\"coordinates\": {\"x\": 12, \"y\": -45.7},|\"coordinates\": {\"y\": -45.7},|coordinates.x",
-            "\"z\": 300,|'',|person.location.z"
+            "\"z\": 300,|''|person.location.z"
     })
     void rejectsMalformedOrMissingFieldsWith400(String from, String to, String field) throws Exception {
         mvc.perform(post("/v1/workers").contentType(MediaType.APPLICATION_JSON).content(VALID_BODY.replace(from, to)))

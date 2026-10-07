@@ -49,6 +49,17 @@ mvn clean package -DskipTests
 
 Тот же `setup-domains.sh` поднимает домены и на локальном Payara: `ENV_FILE=local.env bash .github/scripts/setup-domains.sh`.
 
+### GitHub Actions
+
+- `build` — сборка и тесты на каждый push и pull request.
+- `deploy-docs` — Swagger UI на helios при push в `main`.
+- `deploy-services` — сервисы и клиент на helios, только вручную (Actions → Run workflow). Галочка «Создать и настроить домены» — для первого деплоя.
+
+Для `deploy-services` в настройках репозитория нужны:
+
+- variables: `HELIOS_HOST`, `HELIOS_PORT`, `WORKER_PORTBASE`, `HR_PORTBASE`, `PUBLIC_HOST` (`localhost` для доступа через туннель или `helios.cs.ifmo.ru`);
+- secrets: `HELIOS_USER`, `HELIOS_PASSWORD`, `DB_PASSWORD`, `PAYARA_ADMIN_PASSWORD`.
+
 ## Swagger UI
 
 ```bash
