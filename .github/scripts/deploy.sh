@@ -14,16 +14,37 @@ PAYARA_VERSION=6.2025.11
 PG_JDBC_VERSION=42.7.4
 MAVEN_CENTRAL=https://repo1.maven.org/maven2
 
+missing_distributions() {
+  "${SSH[@]}" "$HELIOS_SSH" "bash -s" <<EOF
+set -a
+. $REMOTE_DIR/scripts/.env
+test -x "\$PAYARA_HOME/bin/asadmin" || echo payara
+test -f $REMOTE_DIR/dist/postgresql.jar || echo driver
+EOF
+}
+
 upload_distributions() {
-  local dir
+  local missing dir files=()
+  missing="$(missing_distributions)"
+  if [ -z "$missing" ]; then
+    echo "==> Payara и драйвер PostgreSQL уже есть на helios"
+    return
+  fi
   dir="$(mktemp -d)"
-  echo "==> Скачиваю Payara $PAYARA_VERSION и драйвер PostgreSQL $PG_JDBC_VERSION"
-  curl -fsSL -o "$dir/payara.zip" \
-    "$MAVEN_CENTRAL/fish/payara/distributions/payara/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip"
-  curl -fsSL -o "$dir/postgresql.jar" \
-    "$MAVEN_CENTRAL/org/postgresql/postgresql/$PG_JDBC_VERSION/postgresql-$PG_JDBC_VERSION.jar"
+  if grep -qx payara <<< "$missing"; then
+    echo "==> Скачиваю Payara $PAYARA_VERSION"
+    curl -fsSL -o "$dir/payara.zip" \
+      "$MAVEN_CENTRAL/fish/payara/distributions/payara/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip"
+    files+=("$dir/payara.zip")
+  fi
+  if grep -qx driver <<< "$missing"; then
+    echo "==> Скачиваю драйвер PostgreSQL $PG_JDBC_VERSION"
+    curl -fsSL -o "$dir/postgresql.jar" \
+      "$MAVEN_CENTRAL/org/postgresql/postgresql/$PG_JDBC_VERSION/postgresql-$PG_JDBC_VERSION.jar"
+    files+=("$dir/postgresql.jar")
+  fi
   "${SSH[@]}" "$HELIOS_SSH" "mkdir -p $REMOTE_DIR/dist"
-  "${SCP[@]}" "$dir/payara.zip" "$dir/postgresql.jar" "$HELIOS_SSH:$REMOTE_DIR/dist/"
+  "${SCP[@]}" "${files[@]}" "$HELIOS_SSH:$REMOTE_DIR/dist/"
   rm -rf "$dir"
 }
 

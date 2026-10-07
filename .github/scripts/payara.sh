@@ -3,6 +3,7 @@
 
 ASADMIN="$PAYARA_HOME/bin/asadmin"
 export AS_ADMIN_INTERACTIVE=false
+export JAVA_TOOL_OPTIONS="-Xmx256m"
 PASSWORD_FILE="$DEPLOY_DIR/.asadmin-password"
 PAYARA_MASTER_PASSWORD=changeit
 

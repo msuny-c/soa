@@ -26,7 +26,7 @@ install_payara() {
   unzip -q "$DIST_DIR/payara.zip" -d "$tmp"
   mkdir -p "$(dirname "$PAYARA_HOME")"
   mv "$tmp/payara6" "$PAYARA_HOME"
-  rm -rf "$tmp"
+  rm -rf "$tmp" "$DIST_DIR/payara.zip"
 }
 
 db_password() {

@@ -52,9 +52,16 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.PAYARA_ADMIN_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in HELIOS_USER WORKER_PORTBASE HR_PORTBASE PUBLIC_HOST ADMIN_PASSWORD; do
-            : "${!name:?$name is empty}"
-          done
+          missing=()
+          [ -n "$HELIOS_USER" ] || missing+=("secret HELIOS_USER")
+          [ -n "$ADMIN_PASSWORD" ] || missing+=("secret PAYARA_ADMIN_PASSWORD")
+          [ -n "$WORKER_PORTBASE" ] || missing+=("variable WORKER_PORTBASE")
+          [ -n "$HR_PORTBASE" ] || missing+=("variable HR_PORTBASE")
+          [ -n "$PUBLIC_HOST" ] || missing+=("variable PUBLIC_HOST")
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf '::error::Не задан %s (Settings → Secrets and variables → Actions)\n' "${missing[@]}"
+            exit 1
+          fi
           umask 077
           {
             printf 'HELIOS_SSH=%q\n' "$HELIOS_USER@$HELIOS_HOST"
