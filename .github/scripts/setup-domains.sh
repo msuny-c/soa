@@ -78,7 +78,7 @@ replace_certificate() {
   truststore="$(store_of "$name" cacerts)"
   echo "==> Генерирую самоподписанный сертификат для $name ($(san_list))"
   keytool -delete -alias s1as -keystore "$keystore" -storetype "$storetype" \
-    -storepass "$PAYARA_MASTER_PASSWORD" 2>/dev/null || true
+    -storepass "$PAYARA_MASTER_PASSWORD" >/dev/null 2>&1 || true
   keytool -genkeypair -alias s1as -keyalg RSA -keysize 2048 -validity 825 \
     -dname "CN=localhost, OU=SOA, O=ITMO University, L=Saint Petersburg, C=RU" \
     -ext "SAN=$(san_list)" \
@@ -88,7 +88,7 @@ replace_certificate() {
   keytool -exportcert -rfc -alias s1as -keystore "$keystore" -storetype "$storetype" \
     -storepass "$PAYARA_MASTER_PASSWORD" -file "$cert"
   keytool -delete -alias s1as -keystore "$truststore" -storetype "$(store_type "$truststore")" \
-    -storepass "$PAYARA_MASTER_PASSWORD" 2>/dev/null || true
+    -storepass "$PAYARA_MASTER_PASSWORD" >/dev/null 2>&1 || true
   keytool -importcert -noprompt -alias s1as -file "$cert" \
     -keystore "$truststore" -storetype "$(store_type "$truststore")" -storepass "$PAYARA_MASTER_PASSWORD"
   rm -f "$cert"
@@ -103,7 +103,7 @@ trust_worker_certificate() {
   keytool -exportcert -rfc -alias s1as -keystore "$keystore" -storetype "$(store_type "$keystore")" \
     -storepass "$PAYARA_MASTER_PASSWORD" -file "$cert"
   keytool -delete -alias worker-service -keystore "$truststore" -storetype "$(store_type "$truststore")" \
-    -storepass "$PAYARA_MASTER_PASSWORD" 2>/dev/null || true
+    -storepass "$PAYARA_MASTER_PASSWORD" >/dev/null 2>&1 || true
   keytool -importcert -noprompt -alias worker-service -file "$cert" \
     -keystore "$truststore" -storetype "$(store_type "$truststore")" -storepass "$PAYARA_MASTER_PASSWORD"
   rm -f "$cert"
@@ -115,6 +115,8 @@ configure_common() {
   admin "$port" set configs.config.server-config.network-config.network-listeners.network-listener.http-listener-1.enabled=false
   admin "$port" delete-jvm-options -- -Xmx512m || true
   admin "$port" create-jvm-options -- "-Xmx$JVM_HEAP" || true
+  admin "$port" create-jvm-options -- "-XX\\:ActiveProcessorCount=2" || true
+  admin "$port" set-hazelcast-configuration --enabled=false --dynamic=true
   admin "$port" enable-secure-admin
 }
 
