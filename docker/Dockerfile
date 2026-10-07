@@ -5,6 +5,7 @@ ARG VITE_WORKER_API=https://localhost:24081/api/v1
 ARG VITE_HR_API=https://localhost:24181/hr
 WORKDIR /src
 COPY pom.xml .
+COPY .mvn .mvn
 COPY openapi openapi
 COPY services services
 RUN --mount=type=cache,target=/root/.m2 --mount=type=cache,target=/root/.npm \
