@@ -1,0 +1,31 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+node "Компьютер пользователя" <<device>> as pc {
+  node "Браузер" <<executionEnvironment>> as browser {
+    artifact "React SPA" as spa
+  }
+}
+
+node "helios.cs.ifmo.ru" <<device>> as helios {
+  node "Payara Server 6\nдомен soa-workers\nHTTPS :9981" <<executionEnvironment>> as workers {
+    artifact "worker-service.war\n/api" as ws
+    artifact "site.war\n/" as site
+  }
+  node "Payara Server 6\nдомен soa-hr\nHTTPS :8969" <<executionEnvironment>> as hrdomain {
+    artifact "hr-service.war\n/hr" as hr
+  }
+}
+
+node "pg" <<device>> as pgnode {
+  database "PostgreSQL\nБД studs" <<executionEnvironment>> as db
+}
+
+browser --> workers : HTTPS\n(SSH-туннель)
+browser --> hrdomain : HTTPS\n(SSH-туннель)
+hrdomain --> workers : HTTPS, REST/JSON
+workers --> db : JDBC :5432\njdbc/workersDS
+@enduml

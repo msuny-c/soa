@@ -6,17 +6,17 @@
   teacher: "",
   logo: "logo.png",
 ) = [
-  #set text(region: "RU", lang: "RU")
+  #set text(region: "RU", lang: "RU", hyphenate: false)
 
   #set page(
     paper: "a4",
     margin: (top: 20mm, bottom: 20mm, left: 20mm, right: 20mm),
   )
 
-  #set par(first-line-indent: 0pt, leading: 1.25em)
+  #set par(first-line-indent: 0pt, leading: 1.25em, justify: false)
 
   #place(top + left, dx: 0mm, dy: 0mm)[
-    #box(width: 85mm)[
+    #box(width: 100mm)[
       #align(center)[
         #text(weight: "bold")[
           Университет ИТМО\
