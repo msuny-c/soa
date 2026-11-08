@@ -1,0 +1,16 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+eureka:
+  client:
+    # The discovery server itself is not a client of anything.
+    register-with-eureka: false
+    fetch-registry: false
+  server:
+    # Fast convergence for the local docker-compose demo.
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 5000

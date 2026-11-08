@@ -1,0 +1,30 @@
+server:
+  port: 8081
+  # Keeps the external /api/v1 path identical to labs 1-2 behind the gateway route.
+  servlet:
+    context-path: /api
+  # Rebuild absolute URLs (POST Location header) from X-Forwarded-* sent by the gateway/nginx.
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/soa
+    username: soa
+    password: soa
+    # Idempotent schema.sql (CREATE TABLE IF NOT EXISTS) — safe to run from both instances.
+    initialization-mode: always
+  jpa:
+    hibernate:
+      ddl-auto: none
+    # Match lab 1/2 plain-Spring behavior (no open-session-in-view).
+    open-in-view: false
+    properties:
+      javax.persistence.validation.mode: none
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    # HOSTNAME differs per replica, otherwise the second registration would overwrite the first.
+    instance-id: ${HOSTNAME}:${server.port}
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30

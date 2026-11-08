@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+zuul:
+  # Forward the original Host so downstream absolute URLs stay https://localhost:24081/...
+  add-host-header: true
+  routes:
+    worker-service:
+      path: /api/v1/**
+      serviceId: worker-service
+      strip-prefix: false
+
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            # Zuul wraps every route in Hystrix whose default timeout is 1s — far too
+            # low for DB-backed list/search calls.
+            timeoutInMilliseconds: 30000
+
+worker-service:
+  ribbon:
+    # Ribbon's own defaults (1s read) would kill requests before Hystrix is consulted.
+    ReadTimeout: 20000
+    ConnectTimeout: 2000
+    MaxAutoRetries: 0
+    # Immediate failover to the surviving instance when one worker replica dies.
+    MaxAutoRetriesNextServer: 1
+    OkToRetryOnAllOperations: false
+
+ribbon:
+  eureka:
+    enabled: true
