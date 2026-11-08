@@ -72,9 +72,12 @@ public class WorkerService {
         try {
             return repository.saveAndFlush(worker);
         } catch (DataIntegrityViolationException e) {
-            if (e.getCause() instanceof ConstraintViolationException violation
-                    && PASSPORT_ID_KEY.equals(violation.getConstraintName())) {
-                throw ApiException.conflict("Работник с passportID '" + worker.getPerson().getPassportID() + "' уже существует");
+            if (e.getCause() instanceof ConstraintViolationException) {
+                ConstraintViolationException violation = (ConstraintViolationException) e.getCause();
+                if (PASSPORT_ID_KEY.equals(violation.getConstraintName())) {
+                    throw ApiException.conflict("Работник с passportID '"
+                            + worker.getPerson().getPassportID() + "' уже существует");
+                }
             }
             throw ApiException.unprocessable("Нарушены ограничения полей", "body",
                     "Значения полей не прошли проверку ограничений хранилища");

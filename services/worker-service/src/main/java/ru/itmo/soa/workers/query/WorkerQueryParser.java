@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.experimental.UtilityClass;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
@@ -38,7 +39,7 @@ public class WorkerQueryParser {
     }
 
     public static List<FilterCondition> parseFilters(List<String> rawValues) {
-        return nullToEmpty(rawValues).stream().map(WorkerQueryParser::parseFilter).toList();
+        return nullToEmpty(rawValues).stream().map(WorkerQueryParser::parseFilter).collect(Collectors.toList());
     }
 
     private static FilterCondition parseFilter(String raw) {

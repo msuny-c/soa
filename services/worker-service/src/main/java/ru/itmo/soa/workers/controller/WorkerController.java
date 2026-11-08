@@ -1,15 +1,19 @@
 package ru.itmo.soa.workers.controller;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Positive;
+import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.Positive;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.net.URI;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,6 +32,12 @@ import ru.itmo.soa.workers.error.ApiException;
 import ru.itmo.soa.workers.query.WorkerQueryParser;
 import ru.itmo.soa.workers.service.WorkerService;
 
+/**
+ * Parameter constraint validation works through the MethodValidationPostProcessor proxy:
+ * Spring 5.2 (unlike 6.1) does not validate handler method parameters without @Validated.
+ */
+@Slf4j
+@Validated
 @RestController
 @RequestMapping(path = "/v1/workers", produces = MediaType.APPLICATION_JSON_VALUE)
 @RequiredArgsConstructor
@@ -37,6 +47,8 @@ public class WorkerController {
     private static final String PAGE_ISSUE = "Значение должно быть целым числом >= 0";
     private static final String SIZE_ISSUE = "Значение должно быть целым числом от 1 до 100";
 
+    private static String host;
+
     private final WorkerService service;
 
     @GetMapping
@@ -45,6 +57,7 @@ public class WorkerController {
                            @RequestParam(defaultValue = "20") @Min(value = 1, message = SIZE_ISSUE)
                            @Max(value = 100, message = SIZE_ISSUE) int size) {
         requireAddressableOffset(page, size);
+        log.info("GET /v1/workers handled by instance {}", host());
         return service.list(WorkerQueryParser.parseFilters(params.get("filter")),
                 WorkerQueryParser.parseSort(params.get("sort")), page, size);
     }
@@ -104,5 +117,20 @@ public class WorkerController {
             throw ApiException.badRequest("Некорректные параметры запроса", "page",
                     "Смещение page * size не должно превышать " + Integer.MAX_VALUE + ", получено '" + page + "'");
         }
+    }
+
+    /**
+     * Hostname of this instance; logged on list requests to make Ribbon round-robin
+     * rotation visible in the container logs.
+     */
+    private static synchronized String host() {
+        if (host == null) {
+            try {
+                host = InetAddress.getLocalHost().getHostName();
+            } catch (UnknownHostException e) {
+                host = "unknown";
+            }
+        }
+        return host;
     }
 }

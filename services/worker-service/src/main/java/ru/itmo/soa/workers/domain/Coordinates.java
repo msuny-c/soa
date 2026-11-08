@@ -1,8 +1,8 @@
 package ru.itmo.soa.workers.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
-import jakarta.validation.constraints.NotNull;
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
 

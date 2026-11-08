@@ -20,20 +20,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDate;
 import java.util.List;
+import javax.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.context.junit.jupiter.web.SpringJUnitWebConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.springframework.validation.beanvalidation.MethodValidationPostProcessor;
 import org.springframework.web.context.WebApplicationContext;
-import ru.itmo.soa.workers.config.WebConfig;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import ru.itmo.soa.workers.config.JacksonConfig;
+import ru.itmo.soa.workers.config.WebCorsConfig;
+import ru.itmo.soa.workers.controller.WorkerController;
 import ru.itmo.soa.workers.domain.Coordinates;
 import ru.itmo.soa.workers.domain.Person;
 import ru.itmo.soa.workers.domain.Position;
@@ -46,23 +58,54 @@ import ru.itmo.soa.workers.query.FilterOperation;
 import ru.itmo.soa.workers.query.WorkerField;
 import ru.itmo.soa.workers.service.WorkerService;
 
-@SpringJUnitWebConfig(classes = {WebConfig.class, WorkerControllerTest.Mocks.class})
+@SpringJUnitWebConfig(classes = {JacksonConfig.class, WebCorsConfig.class,
+        WorkerControllerTest.TestMvcConfig.class, WorkerControllerTest.Mocks.class})
 class WorkerControllerTest {
 
-    private static final String VALID_BODY = """
-            {
-              "name": "Ivan Petrov",
-              "coordinates": {"x": 12, "y": -45.7},
-              "salary": 85000,
-              "startDate": "2024-01-15",
-              "endDate": null,
-              "position": "DEVELOPER",
-              "person": {
-                "passportID": "AB1234567",
-                "location": {"x": 10.5, "y": 20.25, "z": 300, "name": "Saint Petersburg"}
-              }
-            }
-            """;
+    private static final String VALID_BODY = "{\n"
+            + "  \"name\": \"Ivan Petrov\",\n"
+            + "  \"coordinates\": {\"x\": 12, \"y\": -45.7},\n"
+            + "  \"salary\": 85000,\n"
+            + "  \"startDate\": \"2024-01-15\",\n"
+            + "  \"endDate\": null,\n"
+            + "  \"position\": \"DEVELOPER\",\n"
+            + "  \"person\": {\n"
+            + "    \"passportID\": \"AB1234567\",\n"
+            + "    \"location\": {\"x\": 10.5, \"y\": 20.25, \"z\": 300, \"name\": \"Saint Petersburg\"}\n"
+            + "  }\n"
+            + "}";
+
+    /**
+     * MVC configuration for the test context: wires the production Jackson settings
+     * (JacksonConfig customizer) into a plain Spring MVC stack and enables parameter
+     * validation through MethodValidationPostProcessor, mirroring Boot's runtime behavior.
+     */
+    @Configuration
+    @EnableWebMvc
+    @ComponentScan(basePackageClasses = WorkerController.class)
+    static class TestMvcConfig implements WebMvcConfigurer {
+        @Autowired
+        private Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer;
+
+        @Bean
+        Validator validator() {
+            return new LocalValidatorFactoryBean();
+        }
+
+        @Bean
+        MethodValidationPostProcessor methodValidationPostProcessor(Validator validator) {
+            MethodValidationPostProcessor processor = new MethodValidationPostProcessor();
+            processor.setValidator(validator);
+            return processor;
+        }
+
+        @Override
+        public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
+            Jackson2ObjectMapperBuilder builder = Jackson2ObjectMapperBuilder.json();
+            jacksonCustomizer.customize(builder);
+            converters.add(new MappingJackson2HttpMessageConverter(builder.build()));
+        }
+    }
 
     @Configuration
     static class Mocks {

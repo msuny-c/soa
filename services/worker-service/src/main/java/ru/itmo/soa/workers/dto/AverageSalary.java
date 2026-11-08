@@ -1,4 +1,9 @@
 package ru.itmo.soa.workers.dto;
 
-public record AverageSalary(Double average, long count) {
+import lombok.Value;
+
+@Value
+public class AverageSalary {
+    Double average;
+    long count;
 }

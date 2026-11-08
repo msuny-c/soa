@@ -21,11 +21,13 @@ public enum FilterOperation {
     private final String apiName;
 
     public boolean supports(Class<?> type) {
-        return switch (this) {
-            case EQ, NE, NULL -> true;
-            case GT, GTE, LT, LTE -> !type.isEnum();
-            case SUBSTR -> type == String.class;
-        };
+        if (this == SUBSTR) {
+            return type == String.class;
+        }
+        if (this == GT || this == GTE || this == LT || this == LTE) {
+            return !type.isEnum();
+        }
+        return true;
     }
 
     public static Optional<FilterOperation> byApiName(String apiName) {

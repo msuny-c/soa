@@ -1,6 +1,6 @@
 package ru.itmo.soa.workers.query;
 
-import jakarta.persistence.criteria.Path;
+import javax.persistence.criteria.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Arrays;
