@@ -89,7 +89,7 @@ public class IndexationBean implements IndexationRemote {
 
         for (int i = 0; i < planned.size(); i++) {
             try {
-                client.updateWorker(planned.get(i).workerID(), withSalary(workers.get(i), planned.get(i).newSalary()));
+                client.updateWorker(planned.get(i).getWorkerID(), withSalary(workers.get(i), planned.get(i).getNewSalary()));
             } catch (ApiException e) {
                 throw e.withMessage(e.getMessage() + ". Индексация прервана: обновлено " + i + " из " + planned.size());
             }

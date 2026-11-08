@@ -62,7 +62,7 @@ class IndexationBeanTest {
         ApiException ex = assertThrows(ApiException.class, () -> service.indexWorker(1, BigDecimal.TEN));
 
         assertEquals(422, ex.getStatus());
-        assertEquals("newSalary", ex.getDetails().get(0).field());
+        assertEquals("newSalary", ex.getDetails().get(0).getField());
         assertTrue(client.updates.isEmpty());
     }
 
@@ -75,8 +75,8 @@ class IndexationBeanTest {
 
         OrganizationIndexationResult result = service.indexOrganization("Acme", new BigDecimal("1.5"));
 
-        assertEquals(101, result.updatedCount());
-        assertEquals(new IndexationResult(151, 2000, 3000), result.results().get(100));
+        assertEquals(101, result.getUpdatedCount());
+        assertEquals(new IndexationResult(151, 2000, 3000), result.getResults().get(100));
         assertEquals(101, client.updates.size());
         assertEquals(1500, client.updates.get(2).getJsonNumber("salary").longValueExact());
     }
@@ -88,7 +88,7 @@ class IndexationBeanTest {
 
         OrganizationIndexationResult result = service.indexOrganization("50%41 {x}+y&z=1", new BigDecimal("2"));
 
-        assertEquals(List.of(new IndexationResult(1, 1000, 2000)), result.results());
+        assertEquals(List.of(new IndexationResult(1, 1000, 2000)), result.getResults());
         assertEquals("person.location.name%5Beq%5D%3D50%2541%20%7Bx%7D%2By%26z%3D1",
                 IndexationBean.equalsFilter("person.location.name", "50%41 {x}+y&z=1"));
     }
@@ -112,7 +112,7 @@ class IndexationBeanTest {
                 () -> service.indexOrganization("Acme", new BigDecimal("3")));
 
         assertEquals(422, ex.getStatus());
-        assertTrue(ex.getDetails().get(0).issue().startsWith("Для работника id=7"));
+        assertTrue(ex.getDetails().get(0).getIssue().startsWith("Для работника id=7"));
         assertTrue(client.updates.isEmpty());
     }
 
