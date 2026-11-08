@@ -4,6 +4,9 @@ server:
 zuul:
   # Forward the original Host so downstream absolute URLs stay https://localhost:24081/...
   add-host-header: true
+  # Let Ribbon retry the next instance when one dies before its Eureka lease expires.
+  retry:
+    enabled: true
   routes:
     worker-service:
       path: /api/v1/**
@@ -28,7 +31,9 @@ worker-service:
     MaxAutoRetries: 0
     # Immediate failover to the surviving instance when one worker replica dies.
     MaxAutoRetriesNextServer: 1
-    OkToRetryOnAllOperations: false
+    # Safe here: the only non-GET (PUT) writes an absolute salary value, so a retry
+    # of an unprocessed request is idempotent.
+    OkToRetryOnAllOperations: true
 
 ribbon:
   eureka:
