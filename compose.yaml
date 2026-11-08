@@ -108,7 +108,8 @@ services:
       gateway:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://localhost:8443/index.html"]
+      # nginx listens on IPv4 only, busybox wget resolves localhost to ::1 first.
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://127.0.0.1:8443/index.html"]
       interval: 5s
       timeout: 5s
       retries: 30

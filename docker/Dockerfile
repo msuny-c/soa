@@ -26,7 +26,8 @@ RUN keytool -genkeypair -alias s1as -keyalg RSA -keysize 2048 -validity 825 -dna
     && keytool -exportcert -rfc -alias s1as -keystore worker.p12 -storepass changeit -file worker.crt \
     && keytool -exportcert -rfc -alias s1as -keystore hr.p12 -storepass changeit -file hr.crt \
     && openssl pkcs12 -in worker.p12 -passin pass:changeit -nodes -out worker.pem \
-    && openssl pkcs12 -in hr.p12 -passin pass:changeit -nodes -out hr.pem
+    && openssl pkcs12 -in hr.p12 -passin pass:changeit -nodes -out hr.pem \
+    && chmod 644 /certs/*.pem
 WORKDIR /src
 
 # Payara instances (hr1, hr2): HTTPS-only listeners with the self-signed hr certificate.
@@ -86,6 +87,7 @@ COPY --from=build /certs/worker.pem /etc/nginx/certs/worker.pem
 COPY docker/web/default.conf /etc/nginx/conf.d/default.conf
 
 # TLS entry point for the HR service: round-robin over both Payara instances.
+# The image runs as the non-root haproxy user, so the key file must be readable.
 FROM haproxy:3.1-alpine AS haproxy
-COPY --from=build /certs/hr.pem /usr/local/etc/haproxy/hr.pem
+COPY --from=build --chmod=644 /certs/hr.pem /usr/local/etc/haproxy/hr.pem
 COPY docker/haproxy/haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
