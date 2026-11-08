@@ -15,7 +15,8 @@ public class WebCorsConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
+                // Spring 5.2 has no allowedOriginPatterns; no credentials are used, "*" is equivalent here.
+                .allowedOrigins("*")
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .exposedHeaders(HttpHeaders.LOCATION);
     }

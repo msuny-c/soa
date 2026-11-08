@@ -49,7 +49,7 @@ class WorkerServiceTest {
         ApiException ex = assertThrows(ApiException.class, () -> service.create(worker()));
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, ex.getStatus());
-        assertEquals("body", ex.getDetails().get(0).field());
+        assertEquals("body", ex.getDetails().get(0).getField());
     }
 
     @Test

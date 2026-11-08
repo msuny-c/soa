@@ -37,7 +37,7 @@ public class IndexationBean implements IndexationRemote {
     @RestClient
     private WorkerServiceClient client;
 
-    IndexationBean() {
+    public IndexationBean() {
     }
 
     /** Package-private seam for unit tests. */
