@@ -24,6 +24,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import ru.itmo.soa.workers.dto.ErrorDetail;
 import ru.itmo.soa.workers.dto.ErrorResponse;
@@ -71,7 +72,12 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     @Override
     protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
                                                         HttpStatus status, WebRequest request) {
-        return respond(HttpStatus.BAD_REQUEST, PARAMS_ERROR, List.of(new ErrorDetail(ex.getPropertyName(),
+        // Spring 5.2 does not fill propertyName for handler argument binding failures;
+        // the name lives on the MethodArgumentTypeMismatchException subclass.
+        String field = ex instanceof MethodArgumentTypeMismatchException
+                ? ((MethodArgumentTypeMismatchException) ex).getName()
+                : ex.getPropertyName();
+        return respond(HttpStatus.BAD_REQUEST, PARAMS_ERROR, List.of(new ErrorDetail(field,
                 "Некорректное значение '" + ex.getValue() + "'")));
     }
 

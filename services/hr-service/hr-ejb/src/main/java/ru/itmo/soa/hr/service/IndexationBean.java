@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import lombok.extern.java.Log;
+import java.util.logging.Logger;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import ru.itmo.soa.hr.client.WorkerServiceClient;
 import ru.itmo.soa.hr.dto.ErrorDetail;
@@ -25,9 +25,10 @@ import ru.itmo.soa.hr.remote.IndexationRemote;
  * old CDI IndexationService). Exposed through the remote business interface
  * {@link IndexationRemote}; pool sizing is configured in META-INF/glassfish-ejb-jar.xml.
  */
-@Log
 @Stateless
 public class IndexationBean implements IndexationRemote {
+
+    private static final Logger log = Logger.getLogger(IndexationBean.class.getName());
 
     static final int PAGE_SIZE = 100;
 
