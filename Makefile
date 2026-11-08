@@ -2,7 +2,7 @@ TYPST ?= typst
 PLANTUML ?= plantuml
 
 REPORT_DIR := docs/report
-LABS := lab-1 lab-2
+LABS := lab-1 lab-2 lab-3
 LAB ?= lab-1
 
 COMMON_DEPS := $(wildcard $(REPORT_DIR)/common/*)

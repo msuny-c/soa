@@ -1,0 +1,54 @@
+@startuml
+skinparam monochrome true
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+node "Компьютер пользователя" <<device>> as pc {
+  node "Браузер" <<executionEnvironment>> as browser {
+    artifact "React SPA" as spa
+  }
+}
+
+node "docker-compose" <<device>> as compose {
+
+  node "nginx\nHTTPS :24081" <<executionEnvironment>> as web {
+    artifact "SPA (статика)" as static
+    artifact "прокси /api/" as proxy
+  }
+
+  node "HAProxy\nHTTPS :24181" <<executionEnvironment>> as lb
+
+  node "API Gateway\nZuul Proxy :8080" <<executionEnvironment>> as gateway
+
+  node "worker-service ×2\nSpring Boot :8081" <<executionEnvironment>> as workers {
+    artifact "worker-service.jar\n/api/v1" as ws
+  }
+
+  node "Payara Server 6\nhr1 HTTPS :8181" <<executionEnvironment>> as hr1 {
+    artifact "hr-war /hr\nhr-ejb (пул EJB)" as hrd1
+  }
+  node "Payara Server 6\nhr2 HTTPS :21081" <<executionEnvironment>> as hr2 {
+    artifact "hr-war /hr\nhr-ejb (пул EJB)" as hrd2
+  }
+
+  node "Eureka Server\n:8761" <<executionEnvironment>> as eureka
+  node "Config Service\n:8888" <<executionEnvironment>> as config
+
+  database "PostgreSQL\n:5432" <<executionEnvironment>> as db
+}
+
+browser --> web : HTTPS :24081
+browser --> lb : HTTPS :24181
+web --> gateway : HTTP /api/
+lb --> hr1 : HTTPS round-robin
+lb --> hr2 : HTTPS round-robin
+gateway --> workers : HTTP /api/v1\nRibbon round-robin
+hr1 --> gateway : HTTP REST
+hr2 --> gateway : HTTP REST
+workers --> db : JDBC
+workers ..> eureka : регистрация
+gateway ..> eureka : поиск экземпляров
+workers ..> config : конфигурация
+gateway ..> config : конфигурация
+@enduml
