@@ -7,10 +7,11 @@ WORKDIR /src
 COPY pom.xml .
 COPY .mvn .mvn
 COPY openapi openapi
+COPY config-repo config-repo
 COPY services services
 RUN --mount=type=cache,target=/root/.m2 --mount=type=cache,target=/root/.npm \
-    VITE_WORKER_API=$VITE_WORKER_API VITE_HR_API=$VITE_HR_API mvn -B -q clean package -DskipTests \
-    && mvn -B -q dependency:copy -Dartifact=org.postgresql:postgresql:42.7.4 -DoutputDirectory=/drivers
+    VITE_WORKER_API=$VITE_WORKER_API VITE_HR_API=$VITE_HR_API \
+    mvn -B -q clean package -DskipTests
 
 FROM ${PAYARA_IMAGE} AS certs
 ARG DNAME="CN=localhost,OU=Payara,O=Payara Foundation,L=Great Malvern,ST=Worcestershire,C=UK"
@@ -22,12 +23,15 @@ RUN keytool -genkeypair -alias s1as -keyalg RSA -keysize 2048 -validity 825 -dna
         -ext "SAN=dns:localhost,dns:hr,ip:127.0.0.1" \
         -keystore hr.p12 -storetype PKCS12 -storepass changeit -keypass changeit \
     && keytool -exportcert -rfc -alias s1as -keystore worker.p12 -storepass changeit -file worker.crt \
-    && keytool -exportcert -rfc -alias s1as -keystore hr.p12 -storepass changeit -file hr.crt
+    && keytool -exportcert -rfc -alias s1as -keystore hr.p12 -storepass changeit -file hr.crt \
+    && openssl pkcs12 -in worker.p12 -passin pass:changeit -nodes -out worker.pem \
+    && openssl pkcs12 -in hr.p12 -passin pass:changeit -nodes -out hr.pem
 
+# Payara instances (hr1, hr2): HTTPS-only listeners with the self-signed hr certificate.
 FROM ${PAYARA_IMAGE} AS payara
 ENV DOMAIN_CONFIG=/opt/payara/appserver/glassfish/domains/domain1/config \
     DEPLOY_PROPS=--force=true
-ARG SERVER
+ARG SERVER=hr
 COPY --from=certs --chown=payara:payara /tmp/certs/ /tmp/certs/
 RUN keytool -delete -alias s1as -keystore $DOMAIN_CONFIG/keystore.p12 -storepass changeit \
     && keytool -importkeystore -noprompt -srckeystore /tmp/certs/$SERVER.p12 -srcstorepass changeit -srcalias s1as \
@@ -35,15 +39,51 @@ RUN keytool -delete -alias s1as -keystore $DOMAIN_CONFIG/keystore.p12 -storepass
     && keytool -delete -alias s1as -keystore $DOMAIN_CONFIG/cacerts.p12 -storepass changeit \
     && keytool -importcert -noprompt -alias s1as -file /tmp/certs/$SERVER.crt \
         -keystore $DOMAIN_CONFIG/cacerts.p12 -storepass changeit \
-    && keytool -importcert -noprompt -alias worker-service -file /tmp/certs/worker.crt \
-        -keystore $DOMAIN_CONFIG/cacerts.p12 -storepass changeit \
     && rm -r /tmp/certs
 
-FROM payara AS worker
-COPY --from=build --chown=payara:payara /drivers/ /opt/payara/appserver/glassfish/domains/domain1/lib/
-COPY --chown=payara:payara docker/worker/ /opt/payara/config/
-COPY --from=build --chown=payara:payara /src/services/worker-service/target/worker-service.war /src/services/site/target/site.war /opt/payara/deployments/
+# Spring Boot 2.3 (Spring Cloud Hoxton) does not run on JRE 17+ — pin Java 11 for all cloud services.
+FROM eclipse-temurin:11-jre-jammy AS base-java11
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM base-java11 AS worker
+COPY --from=build /src/services/worker-service/target/worker-service.jar /app/
+WORKDIR /app
+ENTRYPOINT ["java", "-jar", "worker-service.jar"]
+
+FROM base-java11 AS config-server
+COPY --from=build /src/config-repo /app/config-repo
+COPY --from=build /src/services/config-server/target/config-server.jar /app/
+WORKDIR /app
+ENTRYPOINT ["java", "-jar", "config-server.jar"]
+
+FROM base-java11 AS eureka-server
+COPY --from=build /src/services/eureka-server/target/eureka-server.jar /app/
+WORKDIR /app
+ENTRYPOINT ["java", "-jar", "eureka-server.jar"]
+
+FROM base-java11 AS gateway
+COPY --from=build /src/services/api-gateway/target/api-gateway.jar /app/
+WORKDIR /app
+ENTRYPOINT ["java", "-jar", "api-gateway.jar"]
 
 FROM payara AS hr
 COPY --chown=payara:payara docker/hr/ /opt/payara/config/
-COPY --from=build --chown=payara:payara /src/services/hr-service/target/hr-service.war /opt/payara/deployments/
+COPY --from=build --chown=payara:payara /src/services/hr-service/hr-ear/target/hr-service.ear /opt/payara/deployments/
+
+# Second instance of the app server on a different port, same EAR deployment.
+FROM payara AS hr2
+COPY --chown=payara:payara docker/hr2/ /opt/payara/config/
+COPY --from=build --chown=payara:payara /src/services/hr-service/hr-ear/target/hr-service.ear /opt/payara/deployments/
+
+# TLS entry point for the browser: serves the SPA and proxies /api/ to the Zuul gateway.
+FROM nginx:1.27-alpine AS web
+COPY --from=build /src/services/site/dist/ /usr/share/nginx/html/
+COPY --from=certs /tmp/certs/worker.pem /etc/nginx/certs/worker.pem
+COPY docker/web/default.conf /etc/nginx/conf.d/default.conf
+
+# TLS entry point for the HR service: round-robin over both Payara instances.
+FROM haproxy:3.1-alpine AS haproxy
+COPY --from=certs /tmp/certs/hr.pem /usr/local/etc/haproxy/hr.pem
+COPY docker/haproxy/haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg

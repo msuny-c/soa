@@ -12,31 +12,160 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  eureka-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: eureka-server
+    ports:
+      - "28761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8761/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  config-server:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: config-server
+    ports:
+      - "28888:8888"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8888/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   worker:
     build:
       context: .
       dockerfile: docker/Dockerfile
       target: worker
-      args:
-        SERVER: worker
-    ports:
-      - "24081:8181"
+    # Two replicas behind one Eureka application name — Ribbon round-robin in the gateway.
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          memory: 640M
     depends_on:
       db:
         condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/api/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
 
-  hr:
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: gateway
+    # No host port: reached from the nginx entry point and from the hr services only.
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: web
+    ports:
+      # Same external port as in lab 2 — the client API base URL is unchanged.
+      - "24081:8443"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://localhost:8443/index.html"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  hr1:
     build:
       context: .
       dockerfile: docker/Dockerfile
       target: hr
       args:
         SERVER: hr
-    ports:
-      - "24181:8181"
     depends_on:
-      - worker
+      gateway:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  hr2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: hr2
+      args:
+        SERVER: hr
+    ports:
+      # Direct access to the second instance (different server port), bypassing HAProxy.
+      - "24182:21081"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  haproxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: haproxy
+    ports:
+      # Same external port as in lab 2.
+      - "24181:8443"
+      - "24183:8404"
+    depends_on:
+      - hr1
+      - hr2
+    deploy:
+      resources:
+        limits:
+          memory: 96M
 
 volumes:
   db-data:

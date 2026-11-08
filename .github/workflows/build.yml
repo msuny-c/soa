@@ -16,11 +16,15 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: '21'
+          # 21 is the default JVM for Maven; 11 is registered in toolchains.xml for the
+          # Spring Cloud (Boot 2.3) module tests via the -Pjdk11-tests profile.
+          java-version: |
+            21
+            11
           cache: maven
 
       - name: Build and test
         env:
           VITE_WORKER_API: https://localhost:24081/api/v1
           VITE_HR_API: https://localhost:24181/hr
-        run: mvn -B clean verify
+        run: mvn -B clean verify -Pjdk11-tests
