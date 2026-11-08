@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ru.itmo.soa</groupId>
+        <artifactId>hr-service</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>hr-api</artifactId>
+
+    <description>
+        Types shared between the EJB jar and the web war: the remote business interface and the DTOs
+        crossing the remote boundary. Deployed inside the EAR library directory so both modules see
+        exactly one copy of each class.
+    </description>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.platform</groupId>
+            <artifactId>jakarta.jakartaee-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>ru.itmo.soa</groupId>
+        <artifactId>soa-lab</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>cloud-parent</artifactId>
+    <packaging>pom</packaging>
+
+    <description>
+        Intermediate parent for Spring Cloud modules (lab 3).
+        Spring Cloud Hoxton is the last line with Netflix Ribbon and Zuul;
+        it requires Spring Boot 2.3 (javax namespace, Spring 5.2), hence release 11.
+    </description>
+
+    <properties>
+        <maven.compiler.release>11</maven.compiler.release>
+        <!-- Re-pin versions inherited from the root pom so they cannot clash with the Boot BOM below. -->
+        <spring.version>5.2.15.RELEASE</spring.version>
+        <spring-data-jpa.version>2.3.9.RELEASE</spring-data-jpa.version>
+        <hibernate.version>5.4.32.Final</hibernate.version>
+        <jackson.version>2.11.4</jackson.version>
+        <junit.version>5.6.3</junit.version>
+        <mockito.version>3.3.3</mockito.version>
+        <hibernate-validator.version>6.1.7.Final</hibernate-validator.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Child-level imports take precedence over the BOMs imported in the root pom. -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>2.3.12.RELEASE</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>Hoxton.SR12</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>2.3.12.RELEASE</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+    <profiles>
+        <!--
+            Runs the surefire JVMs on JDK 11 (Spring 5.2 does not officially run on JDK 17+).
+            Requires a JDK 11 toolchain: registered automatically in CI via actions/setup-java,
+            locally listed in ~/.m2/toolchains.xml. Without the profile tests run on the default JDK.
+        -->
+        <profile>
+            <id>jdk11-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-toolchains-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>toolchain</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>11</version>
+                                </jdk>
+                            </toolchains>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

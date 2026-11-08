@@ -10,6 +10,10 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>services/cloud-parent</module>
+        <module>services/config-server</module>
+        <module>services/eureka-server</module>
+        <module>services/api-gateway</module>
         <module>services/worker-service</module>
         <module>services/hr-service</module>
         <module>services/site</module>
