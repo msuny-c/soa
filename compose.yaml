@@ -103,13 +103,14 @@ services:
       target: web
     ports:
       # Same external port as in lab 2 — the client API base URL is unchanged.
-      - "24081:8443"
+      # nginx listens on this port inside the container so the forwarded port matches.
+      - "24081:24081"
     depends_on:
       gateway:
         condition: service_healthy
     healthcheck:
       # nginx listens on IPv4 only, busybox wget resolves localhost to ::1 first.
-      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://127.0.0.1:8443/index.html"]
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://127.0.0.1:24081/index.html"]
       interval: 5s
       timeout: 5s
       retries: 30
@@ -123,11 +124,9 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: hr
-      args:
-        SERVER: hr
+    # Ordering only: hr contacts the gateway per request, nothing at boot depends on it.
     depends_on:
-      gateway:
-        condition: service_healthy
+      - gateway
     deploy:
       resources:
         limits:
@@ -138,14 +137,11 @@ services:
       context: .
       dockerfile: docker/Dockerfile
       target: hr2
-      args:
-        SERVER: hr
     ports:
       # Direct access to the second instance (different server port), bypassing HAProxy.
       - "24182:21081"
     depends_on:
-      gateway:
-        condition: service_healthy
+      - gateway
     deploy:
       resources:
         limits:

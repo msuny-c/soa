@@ -1,0 +1,7 @@
+# Shared defaults served by the config server to every client application.
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka
+    # Speed up registration so the gateway sees new instances quickly in the local compose setup.
+    instance-info-replication-interval-seconds: 5

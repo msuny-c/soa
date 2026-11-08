@@ -22,7 +22,12 @@
 
     <properties>
         <maven.compiler.release>11</maven.compiler.release>
-        <!-- Re-pin versions inherited from the root pom so they cannot clash with the Boot BOM below. -->
+        <!--
+            MUST stay pinned to Boot 2.3-consistent versions: the root pom manages
+            spring-data-jpa / hibernate-core / hibernate-validator / mockito-junit-jupiter
+            (and imports jackson/junit BOMs) with these property names. Redefining them here
+            keeps every inherited entry resolvable and Boot-consistent for this subtree.
+        -->
         <spring.version>5.2.15.RELEASE</spring.version>
         <spring-data-jpa.version>2.3.9.RELEASE</spring-data-jpa.version>
         <hibernate.version>5.4.32.Final</hibernate.version>

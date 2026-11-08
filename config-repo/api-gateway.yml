@@ -34,7 +34,3 @@ worker-service:
     # Safe here: the only non-GET (PUT) writes an absolute salary value, so a retry
     # of an unprocessed request is idempotent.
     OkToRetryOnAllOperations: true
-
-ribbon:
-  eureka:
-    enabled: true

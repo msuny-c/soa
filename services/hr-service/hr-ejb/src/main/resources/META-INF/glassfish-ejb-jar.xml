@@ -12,6 +12,9 @@
     <enterprise-beans>
         <ejb>
             <ejb-name>IndexationBean</ejb-name>
+            <!-- The war and the ejb jar are colocated in one EAR; skip the remote-view
+                 argument copying (DTOs are immutable, by-reference is safe). -->
+            <pass-by-reference>true</pass-by-reference>
             <bean-pool>
                 <steady-pool-size>4</steady-pool-size>
                 <resize-quantity>2</resize-quantity>

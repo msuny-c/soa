@@ -7,7 +7,6 @@ WORKDIR /src
 COPY pom.xml .
 COPY .mvn .mvn
 COPY openapi openapi
-COPY config-repo config-repo
 COPY services services
 RUN --mount=type=cache,target=/root/.m2 --mount=type=cache,target=/root/.npm \
     VITE_WORKER_API=$VITE_WORKER_API VITE_HR_API=$VITE_HR_API \
@@ -56,7 +55,9 @@ WORKDIR /app
 ENTRYPOINT ["java", "-jar", "worker-service.jar"]
 
 FROM base-java11 AS config-server
-COPY --from=build /src/config-repo /app/config-repo
+# config-repo comes straight from the build context: editing a config yml must not
+# invalidate the (expensive) Maven layer of the build stage.
+COPY config-repo /app/config-repo
 COPY --from=build /src/services/config-server/target/config-server.jar /app/
 WORKDIR /app
 ENTRYPOINT ["java", "-jar", "config-server.jar"]
@@ -75,10 +76,10 @@ FROM payara AS hr
 COPY --chown=payara:payara docker/hr/ /opt/payara/config/
 COPY --from=build --chown=payara:payara /src/services/hr-service/hr-ear/target/hr-service.ear /opt/payara/deployments/
 
-# Second instance of the app server on a different port, same EAR deployment.
-FROM payara AS hr2
-COPY --chown=payara:payara docker/hr2/ /opt/payara/config/
-COPY --from=build --chown=payara:payara /src/services/hr-service/hr-ear/target/hr-service.ear /opt/payara/deployments/
+# Second instance of the app server on a different port, same EAR deployment:
+# inherits everything from hr and overrides only the listener port script.
+FROM hr AS hr2
+COPY --chown=payara:payara docker/hr2/pre-boot-commands.asadmin /opt/payara/config/pre-boot-commands.asadmin
 
 # TLS entry point for the browser: serves the SPA and proxies /api/ to the Zuul gateway.
 FROM nginx:1.27-alpine AS web

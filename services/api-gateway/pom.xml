@@ -19,7 +19,9 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-zuul</artifactId>
         </dependency>
-        <!-- Ribbon: the load balancer in front of the worker-service instances (lab 3 requirement). -->
+        <!-- Ribbon: the load balancer in front of the worker-service instances (lab 3
+             requirement). Already transitive via the Zuul starter; declared explicitly
+             so the assignment requirement is visible in the build. -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-ribbon</artifactId>
@@ -41,11 +43,6 @@
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
