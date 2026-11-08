@@ -13,9 +13,10 @@ RUN --mount=type=cache,target=/root/.m2 --mount=type=cache,target=/root/.npm \
     VITE_WORKER_API=$VITE_WORKER_API VITE_HR_API=$VITE_HR_API \
     mvn -B -q clean package -DskipTests
 
-FROM ${PAYARA_IMAGE} AS certs
+# Self-signed certificates (same DNAME/SAN pattern as lab 2). Generated here because
+# the build stage has both keytool (JDK) and openssl, unlike the slim runtime images.
 ARG DNAME="CN=localhost,OU=Payara,O=Payara Foundation,L=Great Malvern,ST=Worcestershire,C=UK"
-WORKDIR /tmp/certs
+WORKDIR /certs
 RUN keytool -genkeypair -alias s1as -keyalg RSA -keysize 2048 -validity 825 -dname "$DNAME" \
         -ext "SAN=dns:localhost,dns:worker,ip:127.0.0.1" \
         -keystore worker.p12 -storetype PKCS12 -storepass changeit -keypass changeit \
@@ -26,13 +27,14 @@ RUN keytool -genkeypair -alias s1as -keyalg RSA -keysize 2048 -validity 825 -dna
     && keytool -exportcert -rfc -alias s1as -keystore hr.p12 -storepass changeit -file hr.crt \
     && openssl pkcs12 -in worker.p12 -passin pass:changeit -nodes -out worker.pem \
     && openssl pkcs12 -in hr.p12 -passin pass:changeit -nodes -out hr.pem
+WORKDIR /src
 
 # Payara instances (hr1, hr2): HTTPS-only listeners with the self-signed hr certificate.
 FROM ${PAYARA_IMAGE} AS payara
 ENV DOMAIN_CONFIG=/opt/payara/appserver/glassfish/domains/domain1/config \
     DEPLOY_PROPS=--force=true
 ARG SERVER=hr
-COPY --from=certs --chown=payara:payara /tmp/certs/ /tmp/certs/
+COPY --from=build --chown=payara:payara /certs/ /tmp/certs/
 RUN keytool -delete -alias s1as -keystore $DOMAIN_CONFIG/keystore.p12 -storepass changeit \
     && keytool -importkeystore -noprompt -srckeystore /tmp/certs/$SERVER.p12 -srcstorepass changeit -srcalias s1as \
         -destkeystore $DOMAIN_CONFIG/keystore.p12 -deststorepass changeit -destkeypass changeit \
@@ -80,10 +82,10 @@ COPY --from=build --chown=payara:payara /src/services/hr-service/hr-ear/target/h
 # TLS entry point for the browser: serves the SPA and proxies /api/ to the Zuul gateway.
 FROM nginx:1.27-alpine AS web
 COPY --from=build /src/services/site/dist/ /usr/share/nginx/html/
-COPY --from=certs /tmp/certs/worker.pem /etc/nginx/certs/worker.pem
+COPY --from=build /certs/worker.pem /etc/nginx/certs/worker.pem
 COPY docker/web/default.conf /etc/nginx/conf.d/default.conf
 
 # TLS entry point for the HR service: round-robin over both Payara instances.
 FROM haproxy:3.1-alpine AS haproxy
-COPY --from=certs /tmp/certs/hr.pem /usr/local/etc/haproxy/hr.pem
+COPY --from=build /certs/hr.pem /usr/local/etc/haproxy/hr.pem
 COPY docker/haproxy/haproxy.cfg /usr/local/etc/haproxy/haproxy.cfg
