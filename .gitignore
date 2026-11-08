@@ -10,3 +10,4 @@ services/site/dist/
 .github/scripts/.asadmin-password
 *.p12
 services/site/src/generated/
+CLAUDE.local.md
