@@ -1,5 +1,8 @@
 name: Deploy services to Helios
 
+# Deploys the lab 2 artifact layout (worker/hr wars on two Payara domains).
+# Lab 3 runs the full stack locally via docker-compose; this workflow is kept for
+# the lab 2 deliverable only.
 on:
   workflow_dispatch:
     inputs:
