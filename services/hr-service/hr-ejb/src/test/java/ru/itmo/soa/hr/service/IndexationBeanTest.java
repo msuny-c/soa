@@ -21,10 +21,16 @@ import ru.itmo.soa.hr.dto.IndexationResult;
 import ru.itmo.soa.hr.dto.OrganizationIndexationResult;
 import ru.itmo.soa.hr.error.ApiException;
 
-class IndexationServiceTest {
+class IndexationBeanTest {
 
     private final FakeClient client = new FakeClient();
-    private final IndexationService service = new IndexationService(client);
+    private final IndexationBean service = createService();
+
+    private IndexationBean createService() {
+        IndexationBean bean = new IndexationBean();
+        bean.setClient(client);
+        return bean;
+    }
 
     @Test
     void indexesSingleWorkerAndSendsFullWriteObject() {
@@ -84,7 +90,7 @@ class IndexationServiceTest {
 
         assertEquals(List.of(new IndexationResult(1, 1000, 2000)), result.results());
         assertEquals("person.location.name%5Beq%5D%3D50%2541%20%7Bx%7D%2By%26z%3D1",
-                IndexationService.equalsFilter("person.location.name", "50%41 {x}+y&z=1"));
+                IndexationBean.equalsFilter("person.location.name", "50%41 {x}+y&z=1"));
     }
 
     @Test

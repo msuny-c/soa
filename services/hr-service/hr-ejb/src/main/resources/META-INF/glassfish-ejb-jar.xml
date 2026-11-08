@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE glassfish-ejb-jar PUBLIC "-//GlassFish.org//DTD GlassFish Application Server 3.1 EJB 3.1//EN"
+        "http://glassfish.org/dtds/glassfish-ejb-jar_3_1-1.dtd">
+<!--
+    EJB pool configuration (lab 3 requirement): configurable pool size that grows
+    dynamically under load. The pool starts at steady-pool-size instances on first
+    use, grows by resize-quantity when concurrent demand rises, and is capped by
+    max-pool-size; idle instances beyond the steady size are reclaimed after
+    pool-idle-timeout-in-seconds.
+-->
+<glassfish-ejb-jar>
+    <enterprise-beans>
+        <ejb>
+            <ejb-name>IndexationBean</ejb-name>
+            <bean-pool>
+                <steady-pool-size>4</steady-pool-size>
+                <resize-quantity>2</resize-quantity>
+                <max-pool-size>32</max-pool-size>
+                <pool-idle-timeout-in-seconds>300</pool-idle-timeout-in-seconds>
+                <max-wait-time-in-millis>-1</max-wait-time-in-millis>
+            </bean-pool>
+        </ejb>
+    </enterprise-beans>
+</glassfish-ejb-jar>

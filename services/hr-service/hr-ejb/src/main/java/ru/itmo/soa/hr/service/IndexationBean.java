@@ -1,6 +1,7 @@
 package ru.itmo.soa.hr.service;
 
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.annotation.PostConstruct;
+import jakarta.ejb.Stateless;
 import jakarta.inject.Inject;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -9,28 +10,47 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import lombok.extern.java.Log;
 import org.eclipse.microprofile.rest.client.inject.RestClient;
 import ru.itmo.soa.hr.client.WorkerServiceClient;
 import ru.itmo.soa.hr.dto.ErrorDetail;
 import ru.itmo.soa.hr.dto.IndexationResult;
 import ru.itmo.soa.hr.dto.OrganizationIndexationResult;
 import ru.itmo.soa.hr.error.ApiException;
+import ru.itmo.soa.hr.remote.IndexationRemote;
 
-@ApplicationScoped
-public class IndexationService {
+/**
+ * Stateless session EJB holding all business logic of the HR service (moved from the
+ * old CDI IndexationService). Exposed through the remote business interface
+ * {@link IndexationRemote}; pool sizing is configured in META-INF/glassfish-ejb-jar.xml.
+ */
+@Log
+@Stateless
+public class IndexationBean implements IndexationRemote {
 
     static final int PAGE_SIZE = 100;
 
-    private WorkerServiceClient client;
-
-    IndexationService() {
-    }
+    private static final AtomicLong INSTANCE_COUNTER = new AtomicLong();
 
     @Inject
-    public IndexationService(@RestClient WorkerServiceClient client) {
+    @RestClient
+    private WorkerServiceClient client;
+
+    IndexationBean() {
+    }
+
+    /** Package-private seam for unit tests. */
+    void setClient(WorkerServiceClient client) {
         this.client = client;
     }
 
+    @PostConstruct
+    void created() {
+        log.info("IndexationBean instance #" + INSTANCE_COUNTER.incrementAndGet() + " created");
+    }
+
+    @Override
     public IndexationResult indexWorker(int workerId, BigDecimal coeff) {
         JsonObject worker = client.getWorker(workerId);
         long oldSalary = salaryOf(worker);
@@ -42,6 +62,7 @@ public class IndexationService {
         return new IndexationResult(workerId, oldSalary, outcome.newSalary());
     }
 
+    @Override
     public OrganizationIndexationResult indexOrganization(String organization, BigDecimal coeff) {
         List<JsonObject> workers = findOrganizationWorkers(organization);
         if (workers.isEmpty()) {
